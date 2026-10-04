@@ -1,0 +1,43 @@
+#,make,model,YOUR LABEL,failure_mode,notes (optional)
+3,FISKER,OCEAN,other,system_unavailable,"multi-issue list; regen failure, brief brake loss, ADAS failures, camera; unsure vs system_unavailable"
+6,TESLA,MODEL 3,lane_keep_wrong_steer,autopilot_or_fsd,hard right into truck after re-engaging; collision
+9,HONDA,CR-V,false_braking,false_warning,"mostly false warnings; ≥2 full brakes, nothing ahead"
+11,FORD,MUSTANG MACH E,other,self_driving_behavior,"unintended acceleration; also locks, ACC warning; unsure"
+14,TESLA,MODEL Y,other,system_unavailable,"powertrain shutdown, not ADAS"
+17,HONDA,CR-V,conventional_brake_fault,failed_to_brake,"low speed reverse, crash; unsure (thin detail)"
+18,TESLA,MODEL Y,false_braking,system_unavailable,24+ events at 75–80; strong demo quote
+22,TESLA,MODEL Y,conventional_brake_fault,self_driving_behavior,"didn't stop with brake pressed, hit parked car; unsure vs other"
+25,NISSAN,ROGUE,other,conventional_brake_fault,"transmission, not brakes/ADAS"
+31,HONDA,CR-V,other,conventional_brake_fault,"engine/fuel dilution, no ADAS/brake issue"
+32,TESLA,MODEL Y,other,self_driving_behavior,steering loss + sudden acceleration + crash; no feature named; unsure
+33,FISKER,OCEAN,other,system_unavailable,recall/bankruptcy complaint; OTA update 2.1 not received (update ✓)
+34,TESLA,MODEL 3,other,lane_keep_wrong_steer,"power steering loss, wire severed; LDA-unavailable message is a side effect; unsure vs system_unavailable"
+35,HONDA,CR-V,system_unavailable,lane_keep_assist,engine misfire codes disable LKAS/FCW; after fuel recall 23V858
+36,NISSAN,ROGUE,false_braking,false_warning,"collision alert + slowdown, nothing ahead; dealer software update didn't fix (update ✓)"
+37,TESLA,MODEL 3,false_braking,false_warning,phantom AEB caused rear-end crash behind
+39,FORD,MUSTANG MACH E,other,system_unavailable,"power steering loss, low-speed crash; BlueCruise recall mentioned; unsure"
+40,TESLA,MODEL 3,lane_keep_wrong_steer,self_driving_behavior,"FSD Beta 10.12.2, 49 mph, veered right at lane split; unsure vs self_driving"
+42,VOLKSWAGEN,ATLAS,conventional_brake_fault,false_braking,"booster fault + all lights → auto-stop; hardware, not AEB; unsure vs false_braking"
+43,TESLA,MODEL S,other,system_unavailable,insufficient info; fatal
+48,TESLA,MODEL 3,self_driving_behavior,autopilot_or_fsd,FSD proceeds unsafely after ~2 min wait; near-collision; tried to run red
+49,HONDA,CR-V,system_unavailable,false_warning,cruise inoperable + lights; ALSO inadvertent braking + stall; unsure vs false_braking
+50,HONDA,ACCORD,conventional_brake_fault,system_unavailable,parking brake switch clip broken; warranty dispute $750
+51,TESLA,MODEL 3,lane_keep_wrong_steer,system_unavailable,Autopilot drift into adjacent lane; display freeze/reboot at same time
+54,TESLA,MODEL X,conventional_brake_fault,system_unavailable,EPB fault; owner cites recall 17V-260
+58,FORD,MUSTANG MACH E,failed_to_brake,automatic_emergency_braking,pre-collision warned but no stop; also sudden acceleration; crash; unsure vs other
+65,FORD,MUSTANG MACH E,system_unavailable,other,"repeat camera failures, no incident described"
+67,TESLA,MODEL 3,acc_speed_fault,false_braking,"misreads truck speed signs, 75→62 hard slowdown; unsure vs false_braking"
+68,HONDA,ACCORD,conventional_brake_fault,system_unavailable,"VSA/ABS module (DTC 66-113), part unavailable; ADAS lights on; unsure vs system_unavailable"
+71,HONDA,CR-V,false_braking,automatic_emergency_braking,collision mitigation system; must disable every start
+77,HONDA,CR-V,conventional_brake_fault,system_unavailable,"total brake + parking brake loss, hardware; severe"
+79,TESLA,MODEL S,acc_speed_fault,autopilot_or_fsd,Unsure
+81,NISSAN,ROGUE,other,conventional_brake_fault,
+83,HONDA,CR-V,conventional_brake_fault,false_braking,Unsure
+87,TESLA,MODEL 3,acc_speed_fault,system_unavailable,
+88,HONDA,ACCORD,false_warning,false_braking,
+90,VOLKSWAGEN,ATLAS,conventional_brake_fault,other,
+91,FISKER,OCEAN,other,none,
+94,FISKER,OCEAN,other,system_unavailable,Feels Like a software issue
+96,VOLKSWAGEN,ATLAS,conventional_brake_fault,system_unavailable,
+98,TESLA,MODEL Y,failed_to_brake,self_driving_behavior,
+99,NISSAN,ROGUE,other,system_unavailable,

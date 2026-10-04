@@ -4,7 +4,7 @@ Run on your laptop (IBM is reachable only from there):
     python src/granite_code.py --set priority1      # ~11.9k complaints on the investigated models
     python src/granite_code.py --set all            # + ~17.5k other ADAS complaints
 Safe to stop and rerun: already-coded complaints are skipped.
-Output: work/granite_codes.parquet
+Output: work/granite_codes_v2.parquet
 """
 import argparse, json, os, re, sys, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -100,7 +100,7 @@ def main():
                     allc = pd.concat([done, new], ignore_index=True).drop_duplicates("odino", keep="last")
                     allc.astype({c: str for c in allc.columns}).to_parquet(OUT, index=False)
                 print(f"  {i}/{len(futs)} batches, {len(results):,} coded, {time.time()-t0:.0f}s")
-    print("Done. Saved to work/granite_codes.parquet")
+    print("Done. Saved to", OUT)
     print(pd.read_parquet(OUT).failure_mode.value_counts().to_string())
 
 if __name__ == "__main__":

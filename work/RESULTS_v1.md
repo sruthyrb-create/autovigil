@@ -19,3 +19,11 @@ Trade-off (see alarm_burden.csv):
 
 Crash-triggered probes (Autopilot, BlueCruise, FSD): complaint signals weak or unrelated, as expected.
 Caveats: "no investigation" is not "no defect", so alarm counts are upper bounds on false alarms; small n (8).
+
+## RQ2 (preliminary) - Granite 4 coding vs 99 hand labels (labels/label_100.xlsx)
+- Granite v2 run: 11,870 priority-1 complaints coded; 587 (4.9%) invalid labels (feature names instead of failure modes).
+- v2 vs hand labels (n=99): exact agreement 58%, Cohen's kappa 0.44.
+- Core signal false_braking: precision 0.91, recall 0.89.
+- Main error: Granite over-uses system_unavailable (12 of 42 disagreements: conventional_brake_fault/other -> system_unavailable).
+- v1 overlap only 30 complaints (acc 0.77, kappa 0.66) - not comparable.
+- Disagreements: work/label_disagreements_v2.csv
