@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoVigil Dashboard</title>
+<script src="/static/chart.umd.js"></script>
+<script src="/static/chartjs-plugin-annotation.min.js"></script>
+<style>
+:root{--bg:#f6f6f4;--surface:#fcfcfb;--border:#e3e2dd;--text:#0b0b0b;--text2:#52514e;--muted:#85847e;--s1:#2a78d6;--exp:#9a998f;--alarm:rgba(227,73,72,.13);--alarmline:#c23b3a;--accent:#2a78d6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121211;--surface:#1a1a19;--border:#2e2e2b;--text:#fff;--text2:#c3c2b7;--muted:#8d8c84;--s1:#3987e5;--exp:#7d7c74;--alarm:rgba(230,103,103,.18);--alarmline:#e66767;--accent:#3987e5}}
+:root[data-theme="dark"]{--bg:#121211;--surface:#1a1a19;--border:#2e2e2b;--text:#fff;--text2:#c3c2b7;--muted:#8d8c84;--s1:#3987e5;--exp:#7d7c74;--alarm:rgba(230,103,103,.18);--alarmline:#e66767;--accent:#3987e5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:26px;margin:0}h2{font-size:18px;margin:0 0 4px}.sub{color:var(--text2);margin:4px 0 0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:18px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:18px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
+.kpi b{display:block;font-size:28px;line-height:1.2}.kpi span{color:var(--text2);font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
+select{max-width:100%}select,input,button{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}button.on{border-color:var(--accent);color:var(--accent)}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}.grid2>div{min-width:0}@media(max-width:800px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.chartbox{position:relative;height:260px}.lbl{font-weight:600;margin:6px 0 2px}.note{color:var(--text2);font-size:13px}
+.headline{font-size:17px;margin:8px 0 0}.headline b{color:var(--alarmline)}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)}th{color:var(--text2);font-weight:600}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}.tw{overflow-x:auto}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--text2)}.sw{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:6px}
+footer{color:var(--muted);font-size:13px;margin-top:24px}
+</style></head><body><div class="wrap">
+<h1>AutoVigil</h1>
+<p class="sub">Early warning for driver-assist (ADAS) defects from public NHTSA complaints — drug-safety statistics + IBM Granite. Replayed week by week with no peeking at the future.</p>
+<div class="kpis">
+ <div class="kpi"><b>8 / 8</b><span>past NHTSA ADAS investigations flagged before they opened (component-code detector)</span></div>
+ <div class="kpi"><b>46 wk</b><span>median warning before NHTSA opened the investigation</span></div>
+ <div class="kpi"><b>½ the alarms</b><span>with IBM Granite failure-mode coding (27/yr vs 54/yr), 2× precision</span></div>
+ <div class="kpi"><b>29,350</b><span>complaints coded by Granite 4 on watsonx.ai</span></div>
+</div>
+
+<div class="card">
+ <h2>Replay: would AutoVigil have seen it coming?</h2>
+ <div class="row"><label for="ev">Investigation</label><select id="ev"></select><button id="logb" class="on">Log scale</button></div>
+ <p class="headline" id="headline"></p>
+ <div class="legend"><span><i class="sw" style="background:var(--s1)"></i>Complaints in last 26 weeks</span><span><i class="sw" style="background:var(--exp)"></i>Expected if this model were typical</span><span><i class="sw" style="background:var(--alarm);height:10px"></i>Alarm active</span><span><i class="sw" style="background:var(--alarmline)"></i>NHTSA opens investigation</span></div>
+ <div class="grid2">
+  <div><p class="lbl">NHTSA component codes</p><div class="chartbox"><canvas id="c1"></canvas></div></div>
+  <div><p class="lbl">IBM Granite failure-mode coding</p><div class="chartbox"><canvas id="c2"></canvas></div></div>
+ </div>
+ <p class="note">Each point uses only complaints NHTSA had received by that week. Alarm = PRR ≥ 2, χ² ≥ 4, ≥ 3 reports (pharmacovigilance disproportionality).</p>
+</div>
+
+<div class="card">
+ <h2>Alarm board</h2>
+ <div class="row"><label for="asof">As of</label><input type="date" id="asof"><button id="b1" class="on">Granite-coded</button><button id="b2">NHTSA codes</button><button id="now">Latest</button></div>
+ <div class="tw"><table><thead><tr><th>Make</th><th>Model</th><th>Problem</th><th class="num">Reports (26 wk)</th><th class="num">Expected</th><th class="num">PRR</th><th>Alarm since</th></tr></thead><tbody id="alarms"></tbody></table></div>
+ <p class="note" id="alnote"></p>
+</div>
+
+<div class="card">
+ <h2>Backtest results</h2>
+ <div class="tw"><table><thead><tr><th>Investigation</th><th>Opened</th><th class="num">Weeks early (NHTSA codes)</th><th class="num">Weeks early (Granite)</th></tr></thead><tbody id="bt"></tbody></table></div>
+</div>
+
+<footer>Built on IBM watsonx.ai (Granite 4 coding), watsonx Orchestrate (driver &amp; analyst agents), IBM Code Engine (this API). Data: NHTSA ODI public complaints &amp; investigations. Signals are statistical hypotheses from voluntary reports — not proof of a defect, not repair or legal advice. <a href="/docs" style="color:var(--accent)">API docs</a></footer>
+</div>
+<script>
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let EV=[],charts={},src="granite",LOG=true,CUR="PE22002";
+const fmt=d=>new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",year:"numeric"});
+async function j(u){const r=await fetch(u);return r.json()}
+function draw(id,weeks,s,openDate){
+  let oi=weeks.findIndex(w=>w>=openDate);if(oi<0)oi=weeks.length-1;const open=weeks[Math.max(0,oi-1)];
+  const C=document.getElementById(id);charts[id]&&charts[id].destroy();
+  const ann={open:{type:"line",xMin:open,xMax:open,borderColor:css("--alarmline"),borderWidth:2,label:{display:true,content:"NHTSA opens",position:"start",backgroundColor:css("--alarmline"),color:"#fff",font:{size:11}}}};
+  let st=null;s.alarm.forEach((a,i)=>{if(a&&st===null)st=i;if((!a||i==s.alarm.length-1)&&st!==null){const e=a?i:i-1;ann["a"+st]={type:"box",xMin:weeks[st],xMax:weeks[e],backgroundColor:css("--alarm"),borderWidth:0,drawTime:"beforeDatasetsDraw"};st=null}});
+  charts[id]=new Chart(C,{type:"line",data:{labels:weeks,datasets:[
+   {label:"Complaints (26 wk)",data:LOG?s.reports.map(v=>v>0?v:null):s.reports,spanGaps:false,borderColor:css("--s1"),borderWidth:2,pointRadius:0,tension:.2},
+   {label:"Expected",data:LOG?s.expected.map(v=>v>0?v:null):s.expected,borderColor:css("--exp"),borderWidth:2,borderDash:[5,4],pointRadius:0,spanGaps:true}]},
+   options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},animation:false,
+    plugins:{legend:{display:false},annotation:{annotations:ann},tooltip:{callbacks:{title:t=>"Week of "+t[0].label,afterBody:t=>s.alarm[t[0].dataIndex]?"ALARM ACTIVE":""}}},
+    scales:{x:{ticks:{color:css("--muted"),maxTicksLimit:7,callback:function(v){return fmt(this.getLabelForValue(v))}},grid:{display:false}},
+            y:LOG?{type:"logarithmic",min:0.5,ticks:{color:css("--muted"),callback:v=>[1,10,100,1000].includes(v)?v:""},grid:{color:css("--border")}}:{beginAtZero:true,ticks:{color:css("--muted")},grid:{color:css("--border")}}}}});
+}
+async function showEvent(a){
+  const d=await j("/event_series?action="+a),e=d.event;
+  draw("c1",d.weeks,d.series.nhtsa_code,e.open);draw("c2",d.weeks,d.series.granite,e.open);
+  const n=e.nhtsa_code_lead_wk,g=e.granite_lead_wk;
+  document.getElementById("headline").innerHTML=`NHTSA opened <b>${e.action}</b> (${e.label}) on ${fmt(e.open)}. `+
+   (n!=null?`AutoVigil's alarm was already on <b>${Math.round(n)} weeks earlier</b> (since ${fmt(e.nhtsa_code_alarm_start)}).`:"AutoVigil did not alarm before opening.")+
+   (g!=null?` Granite-coded stream: ${Math.round(g)} weeks early.`:" Granite-coded stream: missed.");
+}
+async function showAlarms(){
+  const a=document.getElementById("asof").value;const d=await j(`/alarms?limit=15&source=${src}`+(a?`&as_of=${a}`:""));
+  document.getElementById("alarms").innerHTML=d.alarms.map(r=>`<tr><td>${r.make}</td><td>${r.model}</td><td>${r.stream}</td><td class="num">${r.reports_last_26_weeks}</td><td class="num">${r.expected}</td><td class="num">${r.prr}</td><td>${r.alarm_since}</td></tr>`).join("")||`<tr><td colspan=7>No active alarms</td></tr>`;
+  document.getElementById("alnote").textContent=`Week of ${d.as_of_week} · ${d.n_active} shown, strongest first (BCPNN IC025).`;
+}
+(async()=>{
+  EV=await j("/events");const s=document.getElementById("ev");
+  s.innerHTML=EV.map(e=>`<option value="${e.action}">${e.label} (${e.action})</option>`).join("");
+  s.value="PE22002";s.onchange=()=>{CUR=s.value;showEvent(CUR)};showEvent(CUR);
+  const lb=document.getElementById("logb");lb.onclick=()=>{LOG=!LOG;lb.className=LOG?"on":"";showEvent(CUR)};
+  document.getElementById("bt").innerHTML=EV.map(e=>`<tr><td>${e.label} (${e.action})</td><td>${e.open}</td><td class="num">${e.nhtsa_code_lead_wk==null?"missed":Math.round(e.nhtsa_code_lead_wk)}</td><td class="num">${e.granite_lead_wk==null?"missed":Math.round(e.granite_lead_wk)}</td></tr>`).join("");
+  const b1=document.getElementById("b1"),b2=document.getElementById("b2");
+  b1.onclick=()=>{src="granite";b1.className="on";b2.className="";showAlarms()};b2.onclick=()=>{src="nhtsa_code";b2.className="on";b1.className="";showAlarms()};
+  document.getElementById("asof").onchange=showAlarms;document.getElementById("now").onclick=()=>{document.getElementById("asof").value="";showAlarms()};
+  showAlarms();
+})();
+</script></body></html>

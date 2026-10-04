@@ -5,6 +5,8 @@ from datetime import date
 from typing import Optional, List
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
+import ast
 from pydantic import BaseModel, Field
 
 DATA = os.environ.get("AUTOVIGIL_DATA", os.path.join(os.path.dirname(__file__), "..", "api_data"))
@@ -207,3 +209,45 @@ def backtest():
 
 @app.get("/health", include_in_schema=False)
 def health(): return {"ok": True, "latest_week": str(LATEST.date()), "complaints": len(C)}
+
+
+# ---------------- dashboard support ----------------
+EVENT_MODE = {"FORWARD COLLISION AVOIDANCE": "FALSE_BRAKING", "LANE DEPARTURE": "LANE_KEEP"}
+
+def _events():
+    out = []
+    for r in GT.itertuples():
+        if r.category != "complaint": continue
+        n = BT_N[BT_N.action == r.action]; g = BT_G[BT_G.action == r.action]
+        f = lambda d, c: None if d.empty or pd.isna(d[c].iloc[0]) else float(d[c].iloc[0])
+        out.append({"action": r.action, "label": r.label, "open": r.odate, "make": r.make, "models": ast.literal_eval(r.models),
+                    "group": r.group, "nhtsa_code_lead_wk": f(n, "prr_signal_lead_wk"), "granite_lead_wk": f(g, "granite_prr_signal_lead_wk"),
+                    "nhtsa_code_alarm_start": None if n.empty or pd.isna(n.prr_signal_run_start.iloc[0]) else n.prr_signal_run_start.iloc[0]})
+    return out
+
+@app.get("/events", include_in_schema=False)
+def events(): return _events()
+
+@app.get("/event_series", include_in_schema=False)
+def event_series(action: str):
+    e = next((x for x in _events() if x["action"] == action), None)
+    if not e: raise HTTPException(404, "unknown action")
+    od = pd.Timestamp(e["open"]); lo = od - pd.Timedelta(weeks=170); hi = od + pd.Timedelta(weeks=30)
+    mms = {f'{e["make"]}|{m}' for m in e["models"]}
+    weeks = pd.date_range(S.week[S.week >= lo].min(), hi, freq="7D")
+    res = {"event": e, "weeks": [str(w.date()) for w in weeks], "series": {}}
+    for src, grp in (("nhtsa_code", e["group"]), ("granite", EVENT_MODE.get(e["group"]))):
+        h = S[S.mm.isin(mms) & (S.grp == grp) & (S.source == src) & (S.week >= lo) & (S.week <= hi)]
+        h = h.groupby("week").agg(a=("a", "sum"), expected=("expected", "sum"), alarm=("prr_signal", "max")).reindex(weeks)
+        res["series"][src] = {"reports": [0 if pd.isna(v) else int(v) for v in h.a],
+                              "expected": [None if pd.isna(v) else round(float(v), 2) for v in h.expected],
+                              "alarm": [bool(v) if not pd.isna(v) else False for v in h.alarm]}
+    return res
+
+@app.get("/", include_in_schema=False)
+def dashboard(): return FileResponse(os.path.join(os.path.dirname(__file__), "dashboard.html"))
+
+@app.get("/static/{name}", include_in_schema=False)
+def static(name: str):
+    if name not in ("chart.umd.js", "chartjs-plugin-annotation.min.js"): raise HTTPException(404)
+    return FileResponse(os.path.join(os.path.dirname(__file__), "static", name), media_type="application/javascript")
