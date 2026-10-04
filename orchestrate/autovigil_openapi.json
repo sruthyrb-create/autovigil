@@ -1,0 +1,489 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AutoVigil API",
+    "description": "Early warning of driver-assist (ADAS) defects from public NHTSA complaints. Signals use pharmacovigilance disproportionality (PRR, BCPNN IC025) on weekly as-of data; complaints coded by IBM Granite 4. Signals are statistical hypotheses, not proof of a defect.",
+    "version": "1.0"
+  },
+  "servers": [
+    {
+      "url": "https://autovigil-api.2f6fdusn6le3.us-south.codeengine.appdomain.cloud"
+    }
+  ],
+  "paths": {
+    "/vehicle_status": {
+      "get": {
+        "summary": "Is there an active early-warning alarm for this car model? Use when a driver names their car.",
+        "operationId": "get_vehicle_status",
+        "parameters": [
+          {
+            "name": "make",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Vehicle make, e.g. TESLA, HONDA, NISSAN",
+              "title": "Make"
+            },
+            "description": "Vehicle make, e.g. TESLA, HONDA, NISSAN"
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Vehicle model, e.g. MODEL Y, CR-V, ROGUE",
+              "title": "Model"
+            },
+            "description": "Vehicle model, e.g. MODEL Y, CR-V, ROGUE"
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Replay date (YYYY-MM-DD). Omit for the latest data.",
+              "title": "As Of",
+              "type": "string",
+              "format": "date",
+              "nullable": true
+            },
+            "description": "Replay date (YYYY-MM-DD). Omit for the latest data."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Is there an active early-warning alarm for this car model? Use when a driver names their car."
+      }
+    },
+    "/similar_reports": {
+      "get": {
+        "summary": "Count and sample public complaints like the driver's experience, for the same car model.",
+        "operationId": "get_similar_reports",
+        "parameters": [
+          {
+            "name": "make",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Make"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Model"
+            }
+          },
+          {
+            "name": "failure_mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "One of: false_braking, failed_to_brake, false_warning, lane_keep_wrong_steer, lane_keep_failed, acc_speed_fault, self_driving_behavior, system_unavailable, conventional_brake_fault, other",
+              "title": "Failure Mode",
+              "type": "string",
+              "nullable": true
+            },
+            "description": "One of: false_braking, failed_to_brake, false_warning, lane_keep_wrong_steer, lane_keep_failed, acc_speed_fault, self_driving_behavior, system_unavailable, conventional_brake_fault, other"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10,
+              "minimum": 1,
+              "default": 3,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Count and sample public complaints like the driver's experience, for the same car model."
+      }
+    },
+    "/draft_complaint": {
+      "post": {
+        "summary": "Turn the driver's answers into a structured NHTSA-style complaint and list what is still missing.",
+        "operationId": "draft_complaint",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Report"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Turn the driver's answers into a structured NHTSA-style complaint and list what is still missing."
+      }
+    },
+    "/alarms": {
+      "get": {
+        "summary": "Analyst view: currently active ADAS alarms, ranked by signal strength.",
+        "operationId": "get_ranked_alarms",
+        "parameters": [
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Replay date YYYY-MM-DD; omit for latest",
+              "title": "As Of",
+              "type": "string",
+              "format": "date",
+              "nullable": true
+            },
+            "description": "Replay date YYYY-MM-DD; omit for latest"
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "granite (Granite-coded failure modes) or nhtsa_code",
+              "default": "granite",
+              "title": "Source"
+            },
+            "description": "granite (Granite-coded failure modes) or nhtsa_code"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Analyst view: currently active ADAS alarms, ranked by signal strength."
+      }
+    },
+    "/alarm_detail": {
+      "get": {
+        "summary": "Evidence for one alarm: weekly trend, statistics and example complaints, for drafting an analyst memo.",
+        "operationId": "get_alarm_detail",
+        "parameters": [
+          {
+            "name": "make",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Make"
+            }
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Model"
+            }
+          },
+          {
+            "name": "stream",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "FALSE_BRAKING, LANE_KEEP, SELF_DRIVING, SYSTEM_UNAVAILABLE or an NHTSA component group",
+              "default": "FALSE_BRAKING",
+              "title": "Stream"
+            },
+            "description": "FALSE_BRAKING, LANE_KEEP, SELF_DRIVING, SYSTEM_UNAVAILABLE or an NHTSA component group"
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "title": "As Of",
+              "type": "string",
+              "format": "date",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "description": "Evidence for one alarm: weekly trend, statistics and example complaints, for drafting an analyst memo."
+      }
+    },
+    "/backtest": {
+      "get": {
+        "summary": "Research results: how many weeks before NHTSA opened each investigation AutoVigil would have alarmed.",
+        "operationId": "get_backtest_results",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "description": "Research results: how many weeks before NHTSA opened each investigation AutoVigil would have alarmed."
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Report": {
+        "properties": {
+          "make": {
+            "type": "string",
+            "title": "Make"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "model_year": {
+            "title": "Model Year",
+            "type": "integer",
+            "nullable": true
+          },
+          "incident_date": {
+            "title": "Incident Date",
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "what_happened": {
+            "type": "string",
+            "title": "What Happened",
+            "description": "The driver's own description of the event"
+          },
+          "speed_mph": {
+            "title": "Speed Mph",
+            "type": "number",
+            "nullable": true
+          },
+          "feature_engaged": {
+            "title": "Feature Engaged",
+            "description": "e.g. adaptive cruise, Autopilot, FSD, lane keep, none, unknown",
+            "type": "string",
+            "nullable": true
+          },
+          "obstacle_present": {
+            "title": "Obstacle Present",
+            "description": "Was there a real obstacle ahead?",
+            "type": "boolean",
+            "nullable": true
+          },
+          "road_and_weather": {
+            "title": "Road And Weather",
+            "type": "string",
+            "nullable": true
+          },
+          "warning_messages": {
+            "title": "Warning Messages",
+            "type": "string",
+            "nullable": true
+          },
+          "recent_software_update": {
+            "title": "Recent Software Update",
+            "type": "boolean",
+            "nullable": true
+          },
+          "software_version": {
+            "title": "Software Version",
+            "type": "string",
+            "nullable": true
+          },
+          "crash": {
+            "title": "Crash",
+            "type": "boolean",
+            "nullable": true
+          },
+          "injuries": {
+            "title": "Injuries",
+            "type": "boolean",
+            "nullable": true
+          },
+          "times_happened": {
+            "title": "Times Happened",
+            "type": "integer",
+            "nullable": true
+          },
+          "dealer_visited": {
+            "title": "Dealer Visited",
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "make",
+          "model",
+          "what_happened"
+        ],
+        "title": "Report"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

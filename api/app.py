@@ -40,9 +40,25 @@ app = FastAPI(title="AutoVigil API", version="1.0",
                           "complaints coded by IBM Granite 4. Signals are statistical hypotheses, not proof of a defect.",
               servers=[{"url": os.environ.get("PUBLIC_URL", "http://localhost:8000")}])
 
+import difflib
+KNOWN = sorted(set((C.make.str.upper() + "|" + C.model.str.upper()).tolist()))
+MAKES = sorted({k.split("|")[0] for k in KNOWN})
+
+def _resolve(make, model):
+    """Fix typos in make/model (e.g. TUCHEON -> TUCSON) using the models present in the data."""
+    mk = make.strip().upper(); md = model.strip().upper().replace("-", " ")
+    if mk not in MAKES:
+        c = difflib.get_close_matches(mk, MAKES, n=1, cutoff=0.6); mk = c[0] if c else mk
+    models = [k.split("|")[1] for k in KNOWN if k.startswith(mk + "|")]
+    norm = {m.replace("-", " "): m for m in models}
+    if not any(md in m for m in norm):
+        c = difflib.get_close_matches(md, list(norm), n=1, cutoff=0.6)
+        if c: md = c[0]
+    return mk, md
+
 def _mm_mask(df, make, model):
     m = df.mm.str.upper() if "mm" in df else (df.make.str.upper() + "|" + df.model.str.upper())
-    mk = make.strip().upper(); md = model.strip().upper().replace("-", " ")
+    mk, md = _resolve(make, model)
     return m.str.startswith(mk + "|") & m.str.split("|").str[1].str.replace("-", " ").str.contains(re.escape(md), regex=True)
 
 def _as_of(as_of):
@@ -69,12 +85,13 @@ def vehicle_status(make: str = Query(..., description="Vehicle make, e.g. TESLA,
     s = s[_mm_mask(s, make, model)]
     alarms = []
     for r in s[s.prr_signal].sort_values("ic025", ascending=False).itertuples():
-        alarms.append({"stream": STREAM_TEXT.get(r.grp, r.grp), "source": r.source, "reports_last_26_weeks": int(r.a),
+        alarms.append({"model_variant": r.mm.split("|")[1], "stream": STREAM_TEXT.get(r.grp, r.grp), "source": r.source, "reports_last_26_weeks": int(r.a),
                        "expected_if_typical": round(float(r.expected), 1), "prr": round(float(r.prr), 1),
                        "alarm_since": str(_run_start(r.mm, r.grp, r.source, wk).date())})
     c = C[_mm_mask(C, make, model) & (C.ldate_dt <= t) & (C.ldate_dt > t - pd.Timedelta(weeks=26))]
     counts = c.failure_mode.value_counts().to_dict()
-    return {"make": make.upper(), "model": model.upper(), "as_of_week": str(wk.date()), "alarm_active": bool(alarms),
+    mk, md = _resolve(make, model)
+    return {"make": mk, "model": md, "as_of_week": str(wk.date()), "alarm_active": bool(alarms),
             "alarms": alarms, "assist_related_reports_last_26_weeks": int(len(c)),
             "reports_by_failure_mode": {k: int(v) for k, v in counts.items() if k in MODES},
             "what_to_do": ["Check open recalls and software updates for your VIN at nhtsa.gov/recalls.",
@@ -92,7 +109,8 @@ def similar_reports(make: str, model: str,
         if failure_mode not in MODES: raise HTTPException(400, f"failure_mode must be one of {MODES}")
         c = c[c.failure_mode == failure_mode]
     c = c.sort_values("ldate", ascending=False)
-    return {"make": make.upper(), "model": model.upper(), "failure_mode": failure_mode, "count": int(len(c)),
+    mk, md = _resolve(make, model)
+    return {"make": mk, "model": md, "failure_mode": failure_mode, "count": int(len(c)),
             "crashes": int((c.crash == "Y").sum()), "examples": [
                 {"complaint_id": r.odino, "received": r.ldate, "model_year": r.year, "failure_mode": r.failure_mode,
                  "excerpt": r.snippet[:300]} for r in c.head(limit).itertuples()]}
