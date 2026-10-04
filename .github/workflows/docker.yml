@@ -1,0 +1,28 @@
+# Builds the AutoVigil API image on every push to main and publishes it to GitHub Container Registry (ghcr.io).
+# IBM Code Engine then runs it with "Use an existing container image".
+name: build-api-image
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: lowercase owner
+        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ env.OWNER }}/autovigil-api:latest
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
