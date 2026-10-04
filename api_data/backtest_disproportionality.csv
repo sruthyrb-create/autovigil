@@ -1,0 +1,14 @@
+action,label,category,open,prr_signal_first,prr_signal_run_start,prr_signal_lead_wk,ic_signal_first,ic_signal_run_start,ic_signal_lead_wk,max_a_before_open
+DP19001,Nissan Rogue false AEB,complaint,2019-04-08,2017-04-10,2017-11-06,74.0,2017-04-10,2017-11-06,74.0,35
+PE22002,Tesla phantom braking,complaint,2022-02-16,2020-11-16,2020-11-16,65.0,2020-11-16,2020-11-16,65.0,352
+PE22003,Honda Accord/CR-V false AEB,complaint,2022-02-21,2019-07-01,2020-11-02,68.0,2019-07-22,2020-11-02,68.0,88
+PE23010,Freightliner Cascadia AEB errors,complaint,2023-05-26,2022-02-21,2023-04-10,7.0,2022-09-19,2023-05-15,2.0,5
+PE23017,VW Atlas false AEB,complaint,2023-09-28,2020-11-30,2021-07-26,113.0,2020-11-30,2021-09-13,106.0,54
+PE24008,Honda Insight/Passport false AEB,complaint,2024-03-07,2020-11-23,2023-08-28,27.0,2020-11-23,2024-02-05,4.0,9
+PE24013,Fisker Ocean false AEB,complaint,2024-05-08,2023-12-18,2023-12-18,20.0,2023-12-18,2023-12-18,20.0,35
+PE24025,VinFast VF 8 lane keep,complaint,2024-09-10,2024-05-13,2024-05-13,17.0,2024-05-13,2024-05-13,17.0,12
+PE21020,Tesla Autopilot first-responder crashes,crash,2021-08-13,,,,,,,0
+PE24012,Ford BlueCruise collisions,crash,2024-04-25,,,,,,,0
+PE24031,Tesla FSD low visibility,crash,2024-10-17,2022-01-31,2024-05-06,23.0,2022-01-31,2024-05-06,23.0,11
+PE24033,Tesla Actually Smart Summon,crash,2025-01-06,2022-01-31,2024-05-06,35.0,2022-01-31,2024-05-06,35.0,11
+PE25012,Tesla FSD traffic violations,crash,2025-10-07,2022-01-31,2024-05-06,74.0,2022-01-31,2024-05-06,74.0,11
