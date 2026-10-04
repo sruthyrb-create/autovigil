@@ -1,0 +1,114 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoVigil for Drivers</title><link rel="stylesheet" href="/static/av.css"><script src="/static/chart.umd.js"></script></head><body>
+<nav class="top"><b>AutoVigil</b><a href="/driver" class="on">Driver</a><a href="/analyst">Analyst</a><a href="/research">Research</a></nav>
+<div class="wrap narrow">
+<h1>Check my car</h1><p class="sub">Free, anonymous. No VIN or personal details needed. Works for a car you own or one you're thinking of buying.</p>
+
+<div class="card">
+ <div class="row">
+  <label class="f">Make<select id="make"></select></label>
+  <label class="f">Model<select id="model"></select></label>
+ </div>
+ <h3>What happened? <span class="note">(optional)</span></h3>
+ <div class="row" id="chips">
+  <button class="chip on" data-m="false_braking">Braked hard by itself</button>
+  <button class="chip" data-m="lane_keep_wrong_steer">Steered on its own</button>
+  <button class="chip" data-m="false_warning">False collision / lane warnings</button>
+  <button class="chip" data-m="failed_to_brake">Didn't brake when it should</button>
+ </div>
+ <div class="row" style="margin-top:14px"><button class="primary" id="check">Check my car</button><span class="note" id="busy"></span></div>
+</div>
+
+<div id="result" class="hidden">
+ <div class="card">
+  <div id="status" class="status"></div>
+  <div class="kpis" id="nums"></div>
+  <h3>Reports from owners, by month</h3><div class="chartbox"><canvas id="trend"></canvas></div>
+  <p class="note" id="trendnote"></p>
+ </div>
+ <div class="card"><h2>Is there already a recall?</h2><div id="recalls"></div></div>
+ <div class="card"><h2>What to do today</h2><ol id="todo"></ol></div>
+ <div class="card"><h2>What other owners wrote</h2><div id="examples"></div></div>
+</div>
+
+<div class="card" id="reportcard">
+ <h2>Report what happened</h2>
+ <p class="note">Engineers need specific facts. Fill in what you can. The meter shows how useful your report will be. We draft it; you submit it to NHTSA. Prefer to talk? Use the voice assistant at the bottom right.</p>
+ <div class="row">
+  <label class="f">Date<input type="date" id="r_date"></label>
+  <label class="f">Model year<input type="number" id="r_year" placeholder="e.g. 2024"></label>
+  <label class="f">Speed (mph)<input type="number" id="r_speed" placeholder="e.g. 65"></label>
+ </div>
+ <div class="row">
+  <label class="f">Feature that was on<select id="r_feat"><option value="">Not sure</option><option>adaptive cruise control</option><option>lane keeping / lane centering</option><option>Autopilot / FSD / hands-free driving</option><option>none (driving myself)</option></select></label>
+  <label class="f">Anything really in front?<select id="r_obst"><option value="">Not sure</option><option value="false">No, nothing there</option><option value="true">Yes, there was something</option></select></label>
+  <label class="f">Times it happened<input type="number" id="r_times" placeholder="e.g. 2"></label>
+ </div>
+ <div class="row">
+  <label class="f">Road &amp; weather<input id="r_road" placeholder="e.g. highway, clear day"></label>
+  <label class="f">Warning message shown<input id="r_warn" placeholder="e.g. collision warning flashed"></label>
+ </div>
+ <div class="row">
+  <label class="f">Recent software update?<select id="r_upd"><option value="">Not sure</option><option value="true">Yes</option><option value="false">No</option></select></label>
+  <label class="f">Crash?<select id="r_crash"><option value="">Choose</option><option value="false">No</option><option value="true">Yes</option></select></label>
+  <label class="f">Anyone hurt?<select id="r_inj"><option value="">Choose</option><option value="false">No</option><option value="true">Yes</option></select></label>
+  <label class="f">Told the dealer?<select id="r_dealer"><option value="">Choose</option><option value="true">Yes</option><option value="false">No</option></select></label>
+ </div>
+ <label class="f" style="margin-top:8px">In your own words<textarea id="r_what" placeholder="The car braked hard on the highway with nothing in front of me..."></textarea></label>
+ <h3>Report completeness <span id="pct">0%</span></h3><div class="meter"><i id="bar" style="width:0%"></i></div>
+ <p class="note">A typical public complaint is one or two sentences with no speed, feature or software details.</p>
+ <div class="row" style="margin-top:10px"><button class="primary" id="draft">Draft my NHTSA report</button></div>
+ <div id="draftout" class="hidden"><pre class="memo" id="drafttext"></pre>
+  <div class="row"><button id="copy">Copy text</button><a href="https://www.nhtsa.gov/report-a-safety-problem" target="_blank" rel="noopener">Submit at nhtsa.gov →</a></div></div>
+</div>
+<footer>AutoVigil shows statistical early warnings from voluntary public reports. It is not proof of a defect and not repair or legal advice. If anyone was hurt, get medical help first. Voice assistant by ElevenLabs.</footer>
+</div>
+<elevenlabs-convai agent-id="agent_2901m437c4x0e8fb1tk6v0m44hdx"></elevenlabs-convai>
+<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+<script>
+const $=id=>document.getElementById(id), css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const j=async(u,o)=>(await fetch(u,o)).json(); let MODELS={}, MODE="false_braking", chart=null;
+const MODE_TXT={false_braking:"phantom braking",lane_keep_wrong_steer:"unwanted steering",false_warning:"false warnings",failed_to_brake:"failure to brake"};
+(async()=>{MODELS=await j("/models");const mk=$("make");mk.innerHTML=Object.keys(MODELS).map(m=>`<option>${m}</option>`).join("");
+ const q=new URLSearchParams(location.search);mk.value=q.get("make")||"CHEVROLET";fill();$("model").value=q.get("model")||"EQUINOX EV";})();
+function fill(){$("model").innerHTML=(MODELS[$("make").value]||[]).map(m=>`<option>${m}</option>`).join("")}
+$("make").onchange=fill;
+document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{document.querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));b.classList.add("on");MODE=b.dataset.m});
+$("check").onclick=async()=>{
+ const mk=$("make").value, md=$("model").value; $("busy").textContent="Checking live data…";
+ const [st,sim,tr,rc]=await Promise.all([j(`/vehicle_status?make=${encodeURIComponent(mk)}&model=${encodeURIComponent(md)}`),
+   j(`/similar_reports?make=${encodeURIComponent(mk)}&model=${encodeURIComponent(md)}&failure_mode=${MODE}&limit=3`),
+   j(`/trend?make=${encodeURIComponent(mk)}&model=${encodeURIComponent(md)}`), j(`/recalls?make=${encodeURIComponent(mk)}&model=${encodeURIComponent(md)}&limit=5`)]);
+ $("busy").textContent=""; $("result").classList.remove("hidden");
+ const al=st.alarms.filter(a=>a.source==="granite"); const any=st.alarms.length>0;
+ const fmt=d=>new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"});
+ $("status").className="status "+(any?"red":"green");
+ $("status").innerHTML=any?`<b class="big">🔴 Early-warning alarm active for the ${mk} ${md}</b>${(al[0]||st.alarms[0]).stream.replace(/\s*\(.*\)/,"")}: owners are reporting far more than a typical car — <b>${(al[0]||st.alarms[0]).reports_last_26_weeks}</b> reports in six months vs <b>${(al[0]||st.alarms[0]).expected_if_typical}</b> expected. Alarm on since <b>${fmt((al[0]||st.alarms[0]).alarm_since)}</b>.<br><span class="note">You are not alone. This is a statistical warning, not proof of a defect.</span>`
+   :`<b class="big">🟢 No active early-warning alarm for the ${mk} ${md}</b><span class="note">That doesn't mean nothing is wrong. Your report still matters and helps future drivers.</span>`;
+ $("nums").innerHTML=`<div class="kpi"><b>${sim.count}</b><span>public reports of ${MODE_TXT[MODE]} on this model</span></div><div class="kpi"><b>${sim.crashes}</b><span>of them mention a crash</span></div><div class="kpi"><b>${st.assist_related_reports_last_26_weeks}</b><span>driver-assist reports in the last 6 months</span></div>`;
+ chart&&chart.destroy(); const s=tr.series[MODE]||tr.series.false_braking;
+ chart=new Chart($("trend"),{type:"bar",data:{labels:tr.months,datasets:[{label:MODE_TXT[MODE]+" reports",data:s,backgroundColor:css("--s1"),borderRadius:4,maxBarThickness:18}]},
+  options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:css("--muted"),maxTicksLimit:8},grid:{display:false}},y:{beginAtZero:true,ticks:{color:css("--muted"),precision:0},grid:{color:css("--border")}}}}});
+ $("trendnote").textContent=`Monthly ${MODE_TXT[MODE]} complaints for the ${mk} ${md}, as coded by IBM Granite.`;
+ const RX={false_braking:/unexpected(ly)?\s+(apply|activate|brak)|prematurely|false|unintended|inadvertent|phantom/i,lane_keep_wrong_steer:/lane|steer/i,false_warning:/warning|alert|false/i,failed_to_brake:/fail to (engage|apply)|not (apply|engage)|may not brake|fail to brake|reduced braking/i};
+ const adas=rc.recalls.filter(r=>r.topic==="adas"); const match=adas.filter(r=>RX[MODE].test(r.defect));
+ $("recalls").innerHTML=(rc.recalls.length?`<p>${match.length?`<span class="badge green">A recall covers this problem</span> Check whether <b>your</b> vehicle is included (enter your VIN at <a href="https://www.nhtsa.gov/recalls" target="_blank" rel="noopener">nhtsa.gov/recalls</a>) and ask your dealer for the fix.`:`<span class="badge red">No recall for ${MODE_TXT[MODE]} yet</span> ${adas.length?"There are other driver-assist recalls on this model (below), but none describes this problem. ":""}Your report matters, because recalls follow evidence.`}</p>`+
+   rc.recalls.map(r=>`<div class="quote"><b>${r.campaign}</b> · ${r.date} · ${r.years||""} · ${Number(r.vehicles||0).toLocaleString()} vehicles<br>${r.component}<br>${r.defect.slice(0,260)}…</div>`).join(""):`<p><span class="badge red">No related recall found</span> There is no driver-assist or brake recall for this model in NHTSA's database yet. Reporting is especially important.</p>`);
+ $("todo").innerHTML=st.what_to_do.map(t=>`<li>${t}</li>`).join("")+`<li>Fill in the report below, or tap the voice assistant and just tell it what happened.</li>`;
+ $("examples").innerHTML=sim.examples.length?sim.examples.map(e=>`<div class="quote">“${e.excerpt}…”<br><span class="note">Complaint ${e.complaint_id} · received ${e.received.slice(0,4)}-${e.received.slice(4,6)}</span></div>`).join(""):`<p class="note">No matching complaints yet.</p>`;
+ $("result").scrollIntoView({behavior:"smooth"});
+};
+const F=["r_date","r_year","r_speed","r_feat","r_obst","r_times","r_road","r_warn","r_upd","r_crash","r_inj","r_dealer"];
+function comp(){const n=F.filter(id=>$(id).value!=="").length;const p=Math.round(100*n/F.length);$("pct").textContent=p+"%";$("bar").style.width=p+"%";}
+F.concat(["r_what"]).forEach(id=>$(id).addEventListener("input",comp));
+const B=v=>v===""?null:v==="true";
+$("draft").onclick=async()=>{
+ const body={make:$("make").value,model:$("model").value,model_year:$("r_year").value?+$("r_year").value:null,incident_date:$("r_date").value||null,
+  what_happened:$("r_what").value||"the vehicle's driver-assist system behaved unexpectedly.",speed_mph:$("r_speed").value?+$("r_speed").value:null,
+  feature_engaged:$("r_feat").value||null,obstacle_present:B($("r_obst").value),road_and_weather:$("r_road").value||null,warning_messages:$("r_warn").value||null,
+  recent_software_update:B($("r_upd").value),crash:B($("r_crash").value),injuries:B($("r_inj").value),times_happened:$("r_times").value?+$("r_times").value:null,dealer_visited:B($("r_dealer").value)};
+ const d=await j("/draft_complaint",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+ $("drafttext").textContent=d.draft_text+(d.missing_fields.length?`\n\n(Still missing: ${d.missing_fields.join(", ").replaceAll("_"," ")})`:"");
+ $("draftout").classList.remove("hidden");};
+$("copy").onclick=()=>{navigator.clipboard.writeText($("drafttext").textContent);$("copy").textContent="Copied ✓"};
+</script></body></html>

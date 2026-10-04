@@ -1,114 +1,242 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AutoVigil for Drivers</title><link rel="stylesheet" href="/static/av.css"><script src="/static/chart.umd.js"></script></head><body>
+<title>AutoVigil for Drivers</title><link rel="stylesheet" href="/static/av.css">
+<script src="/static/chart.umd.js"></script><script src="/static/elevenlabs-client.js"></script>
+<style>
+:root{--navy:#14213D;--navy2:#0B1428;--coral:#F28B7D;--brick:#B8382C;--sky:#7FB2F0}
+.hero{background:radial-gradient(1200px 500px at 50% -10%,#24365e 0%,var(--navy) 45%,var(--navy2) 100%);color:#F7F5F0;padding:40px 16px 32px;text-align:center;overflow:hidden}
+.hero-in{max-width:760px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:14px}
+.eyebrow{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--coral);font-weight:700;margin:0}
+.hero h1{font:600 clamp(30px,5.5vw,48px)/1.1 Georgia,'Source Serif 4',serif;margin:0;color:#F7F5F0}.hero h1 em{color:var(--coral);font-style:normal}
+.lead{color:#C9D3E6;font-size:17px;max-width:560px;margin:0}
+.orb{--v:0;position:relative;width:168px;height:168px;border:0;background:none;padding:0;margin:18px 0 4px;border-radius:50%;cursor:pointer;color:#fff}
+.orb .ring{position:absolute;inset:0;border-radius:50%;background:var(--glow,rgba(242,139,125,.35));transform:scale(calc(1 + var(--v)*.55));transition:transform .08s linear,background .4s}
+.orb .r2{inset:-18px;opacity:.35;transform:scale(calc(1 + var(--v)*.9))}
+.orb .core{position:absolute;inset:18px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#ffb3a7,var(--brick) 70%);box-shadow:0 10px 40px rgba(184,56,44,.55);transition:background .4s,box-shadow .4s}
+.orb svg{width:52px;height:52px}
+.hero.idle .orb .ring{animation:breathe 3s ease-in-out infinite}.hero.idle .orb .r2{animation-delay:.6s}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.55}50%{transform:scale(1.12);opacity:.2}}
+.hero.connecting .orb .core{animation:pulse 1s ease-in-out infinite}@keyframes pulse{50%{filter:brightness(1.35)}}
+.hero.listening{--glow:rgba(127,178,240,.38)}.hero.listening .orb .core{background:radial-gradient(circle at 35% 30%,#cfe2ff,#2A78D6 70%);box-shadow:0 10px 40px rgba(42,120,214,.6)}
+.hero.speaking{--glow:rgba(242,139,125,.45)}
+.orb:focus-visible{outline:3px solid var(--sky);outline-offset:6px}
+.orb-label{font-weight:600;font-size:16px;margin:0;min-height:24px}.orb-sub{color:#93A1BC;font-size:13px;margin:-8px 0 0}
+.chat{width:100%;display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;padding:4px 2px;text-align:left}
+.chat:empty{display:none}
+.bub{max-width:82%;padding:10px 14px;border-radius:16px;font-size:15px;line-height:1.4;animation:pop .25s ease-out}
+.bub.agent{align-self:flex-start;background:rgba(255,255,255,.1);border-bottom-left-radius:4px}
+.bub.user{align-self:flex-end;background:var(--brick);border-bottom-right-radius:4px}
+.bub.sys{align-self:center;background:none;color:var(--sky);font-size:13px;padding:2px}
+@keyframes pop{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+.typebar{display:flex;gap:8px;width:100%;max-width:520px}.typebar input{flex:1;min-width:0;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#fff}
+.typebar input::placeholder{color:#93A1BC}.typebar button{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:#fff}
+.try{color:#93A1BC;font-size:13px;margin:0}.try b{color:#E6ECF7;font-weight:500}
+.pick{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}.pick h2{width:100%;margin:0}.pick label.f{flex:1 1 180px}
+.verdict{display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:center;border-radius:18px;padding:22px;margin-top:16px;animation:pop .4s ease-out}
+.verdict.red{background:linear-gradient(135deg,var(--redbg),transparent 80%),var(--surface);border:1px solid var(--red)}
+.verdict.green{background:linear-gradient(135deg,var(--greenbg),transparent 80%),var(--surface);border:1px solid var(--green)}
+.mult{font:700 64px/1 Georgia,serif;color:var(--red);min-width:120px;text-align:center}.mult small{display:block;font:600 12px/1.3 system-ui;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-top:6px}
+.verdict.green .mult{color:var(--green)}
+.verdict h2{font-size:20px;line-height:1.3;margin:0 0 10px}
+.bars{display:flex;flex-direction:column;gap:6px;margin:8px 0}.bar{display:grid;grid-template-columns:90px minmax(0,1fr) 48px;align-items:center;gap:8px;font-size:13px;color:var(--text2)}
+.bar i{display:block;height:12px;border-radius:999px;background:var(--red);width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1)}.bar.typ i{background:var(--exp)}.bar b{color:var(--text);text-align:right;font-variant-numeric:tabular-nums}
+@media(max-width:560px){.verdict{grid-template-columns:minmax(0,1fr)}.mult{text-align:left}}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.chip{border-radius:999px;font-size:14px}
+.kpi b{font-variant-numeric:tabular-nums}
+.todo{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:8px}
+.todo label{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:background .2s,opacity .2s}
+.todo input{margin-top:3px;accent-color:var(--green);width:18px;height:18px;flex:none}.todo label:has(input:checked){background:var(--greenbg);opacity:.75}.todo label:has(input:checked) span{text-decoration:line-through}
+.prog{font-size:13px;color:var(--text2)}.prog.done{color:var(--green);font-weight:600}
+.stories{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 2px 12px;margin-top:8px}
+.story{flex:0 0 min(320px,85%);scroll-snap-align:start;background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:16px 16px 12px;position:relative}
+.story:before{content:"\201C";position:absolute;top:-6px;left:12px;font:700 56px/1 Georgia,serif;color:var(--coral)}
+.story p{margin:22px 0 8px;font-size:14px;color:var(--text)}.story span{font-size:12px;color:var(--muted)}
+.report{border:2px solid var(--accent);animation:pop .4s ease-out}
+.rep-head{display:flex;gap:16px;align-items:center}
+.score{position:relative;width:76px;height:76px;flex:none}.score svg{transform:rotate(-90deg)}.score circle{fill:none;stroke-width:8}.score .bg{stroke:var(--border)}
+.score .fg{stroke:var(--accent);stroke-linecap:round;transition:stroke-dashoffset 1s ease}.score b{position:absolute;inset:0;display:grid;place-items:center;font-size:17px}
+.miss{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.miss span{font-size:12px;border:1px dashed var(--border);border-radius:999px;padding:2px 9px;color:var(--text2)}
+.btnlink{display:inline-block;background:var(--accent);color:var(--accent-ink);font-weight:600;border-radius:10px;padding:8px 14px;text-decoration:none}
+.live{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin-right:6px;animation:pulse 1s infinite}
+.pill{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:none;align-items:center;gap:10px;background:var(--navy);color:#fff;border-radius:999px;padding:8px 8px 8px 16px;box-shadow:0 8px 30px rgba(0,0,0,.35);z-index:9;font-size:14px;font-weight:600}
+.pill.on{display:flex;animation:pop .3s ease-out}.pill i{width:10px;height:10px;border-radius:50%;background:var(--sky);transform:scale(calc(1 + var(--v,0)*1.5));transition:transform .08s}.pill.speaking i{background:var(--coral)}
+.pill button{background:var(--brick);border:0;color:#fff;border-radius:999px;padding:6px 12px;font-weight:600}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body>
 <nav class="top"><b>AutoVigil</b><a href="/driver" class="on">Driver</a><a href="/analyst">Analyst</a><a href="/research">Research</a></nav>
-<div class="wrap narrow">
-<h1>Check my car</h1><p class="sub">Free, anonymous. No VIN or personal details needed. Works for a car you own or one you're thinking of buying.</p>
 
-<div class="card">
- <div class="row">
-  <label class="f">Make<select id="make"></select></label>
-  <label class="f">Model<select id="model"></select></label>
- </div>
- <h3>What happened? <span class="note">(optional)</span></h3>
- <div class="row" id="chips">
-  <button class="chip on" data-m="false_braking">Braked hard by itself</button>
-  <button class="chip" data-m="lane_keep_wrong_steer">Steered on its own</button>
-  <button class="chip" data-m="false_warning">False collision / lane warnings</button>
-  <button class="chip" data-m="failed_to_brake">Didn't brake when it should</button>
- </div>
- <div class="row" style="margin-top:14px"><button class="primary" id="check">Check my car</button><span class="note" id="busy"></span></div>
+<header class="hero idle" id="hero"><div class="hero-in">
+ <p class="eyebrow">AutoVigil for drivers</p>
+ <h1>Did your car just do something <em>scary?</em></h1>
+ <p class="lead">Tell me what happened. I'll check it against thousands of reports from other owners and write your safety report for you.</p>
+ <button class="orb" id="orb" aria-label="Tap to talk to AutoVigil"><span class="ring r2"></span><span class="ring"></span><span class="core"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/></svg></span></button>
+ <p class="orb-label" id="orbLabel">Tap to talk</p>
+ <p class="orb-sub" id="orbSub">Free and anonymous. No VIN or personal details.</p>
+ <div class="chat" id="chat" aria-live="polite"></div>
+ <form class="typebar" id="typeForm"><input id="typeIn" placeholder="Somewhere noisy? Type to the assistant instead…" autocomplete="off"><button>Send</button></form>
+ <p class="try">Try: <b>"My Tucson braked hard on the highway with nothing in front of me."</b></p>
+</div></header>
+
+<div class="wrap narrow">
+<div class="card pick">
+ <h2>Or just check a car</h2><p class="note" style="width:100%;margin:0">Works for the car you drive, or one you're thinking of buying.</p>
+ <label class="f">Make<select id="make"></select></label>
+ <label class="f">Model<select id="model"></select></label>
+ <button class="primary" id="check">Check this car</button>
 </div>
 
 <div id="result" class="hidden">
- <div class="card">
-  <div id="status" class="status"></div>
-  <div class="kpis" id="nums"></div>
-  <h3>Reports from owners, by month</h3><div class="chartbox"><canvas id="trend"></canvas></div>
-  <p class="note" id="trendnote"></p>
+ <div id="verdict" class="verdict"></div>
+ <div class="chips" id="chips">
+  <button class="chip on" data-m="false_braking">Braked by itself</button>
+  <button class="chip" data-m="lane_keep_wrong_steer">Steered on its own</button>
+  <button class="chip" data-m="false_warning">False warnings</button>
+  <button class="chip" data-m="failed_to_brake">Didn't brake</button>
  </div>
- <div class="card"><h2>Is there already a recall?</h2><div id="recalls"></div></div>
- <div class="card"><h2>What to do today</h2><ol id="todo"></ol></div>
- <div class="card"><h2>What other owners wrote</h2><div id="examples"></div></div>
+ <div class="kpis" id="nums"></div>
+ <div class="card"><h2>Reports from owners, month by month</h2><div class="chartbox"><canvas id="trend"></canvas></div><p class="note" id="trendnote"></p></div>
+ <div class="grid2">
+  <div class="card"><h2>Is there a recall?</h2><div id="recalls"></div></div>
+  <div class="card"><h2>What to do today</h2><span class="prog" id="prog"></span><ul class="todo" id="todo"></ul></div>
+ </div>
+ <div class="card"><h2>In other owners' words</h2><p class="note">Real public complaints. Swipe for more.</p><div class="stories" id="examples"></div></div>
 </div>
 
-<div class="card" id="reportcard">
- <h2>Report what happened</h2>
- <p class="note">Engineers need specific facts. Fill in what you can. The meter shows how useful your report will be. We draft it; you submit it to NHTSA. Prefer to talk? Use the voice assistant at the bottom right.</p>
- <div class="row">
-  <label class="f">Date<input type="date" id="r_date"></label>
-  <label class="f">Model year<input type="number" id="r_year" placeholder="e.g. 2024"></label>
-  <label class="f">Speed (mph)<input type="number" id="r_speed" placeholder="e.g. 65"></label>
+<div class="card report hidden" id="reportcard">
+ <div class="rep-head">
+  <div class="score"><svg viewBox="0 0 76 76" width="76" height="76"><circle class="bg" cx="38" cy="38" r="32"/><circle class="fg" id="ring" cx="38" cy="38" r="32" stroke-dasharray="201" stroke-dashoffset="201"/></svg><b id="pct">0%</b></div>
+  <div><h2><span class="live"></span>Your safety report</h2><p class="note" style="margin:0">Written from your conversation. The ring shows how much investigators can use it. Review it, then submit it yourself at NHTSA.</p></div>
  </div>
- <div class="row">
-  <label class="f">Feature that was on<select id="r_feat"><option value="">Not sure</option><option>adaptive cruise control</option><option>lane keeping / lane centering</option><option>Autopilot / FSD / hands-free driving</option><option>none (driving myself)</option></select></label>
-  <label class="f">Anything really in front?<select id="r_obst"><option value="">Not sure</option><option value="false">No, nothing there</option><option value="true">Yes, there was something</option></select></label>
-  <label class="f">Times it happened<input type="number" id="r_times" placeholder="e.g. 2"></label>
- </div>
- <div class="row">
-  <label class="f">Road &amp; weather<input id="r_road" placeholder="e.g. highway, clear day"></label>
-  <label class="f">Warning message shown<input id="r_warn" placeholder="e.g. collision warning flashed"></label>
- </div>
- <div class="row">
-  <label class="f">Recent software update?<select id="r_upd"><option value="">Not sure</option><option value="true">Yes</option><option value="false">No</option></select></label>
-  <label class="f">Crash?<select id="r_crash"><option value="">Choose</option><option value="false">No</option><option value="true">Yes</option></select></label>
-  <label class="f">Anyone hurt?<select id="r_inj"><option value="">Choose</option><option value="false">No</option><option value="true">Yes</option></select></label>
-  <label class="f">Told the dealer?<select id="r_dealer"><option value="">Choose</option><option value="true">Yes</option><option value="false">No</option></select></label>
- </div>
- <label class="f" style="margin-top:8px">In your own words<textarea id="r_what" placeholder="The car braked hard on the highway with nothing in front of me..."></textarea></label>
- <h3>Report completeness <span id="pct">0%</span></h3><div class="meter"><i id="bar" style="width:0%"></i></div>
- <p class="note">A typical public complaint is one or two sentences with no speed, feature or software details.</p>
- <div class="row" style="margin-top:10px"><button class="primary" id="draft">Draft my NHTSA report</button></div>
- <div id="draftout" class="hidden"><pre class="memo" id="drafttext"></pre>
-  <div class="row"><button id="copy">Copy text</button><a href="https://www.nhtsa.gov/report-a-safety-problem" target="_blank" rel="noopener">Submit at nhtsa.gov →</a></div></div>
+ <pre class="memo" id="drafttext"></pre>
+ <div id="missing"></div>
+ <div class="row"><button id="copy">Copy text</button><a class="btnlink" href="https://www.nhtsa.gov/report-a-safety-problem" target="_blank" rel="noopener">Submit at nhtsa.gov →</a></div>
 </div>
-<footer>AutoVigil shows statistical early warnings from voluntary public reports. It is not proof of a defect and not repair or legal advice. If anyone was hurt, get medical help first. Voice assistant by ElevenLabs.</footer>
+
+<div class="pill" id="pill"><i></i><span id="pillTxt">On call</span><button id="hang">End</button></div>
+<footer>AutoVigil shows statistical early warnings from voluntary public reports. It is not proof of a defect and not repair or legal advice. If anyone was hurt, get medical help first. Voice by ElevenLabs.</footer>
 </div>
-<elevenlabs-convai agent-id="agent_2901m437c4x0e8fb1tk6v0m44hdx"></elevenlabs-convai>
-<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+
 <script>
 const $=id=>document.getElementById(id), css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const j=async(u,o)=>(await fetch(u,o)).json(); let MODELS={}, MODE="false_braking", chart=null;
+const j=async(u,o)=>{const r=await fetch(u,o);if(!r.ok)throw new Error(r.status);return r.json()};
+const enc=encodeURIComponent, esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let MODELS={}, MODE="false_braking", chart=null;
 const MODE_TXT={false_braking:"phantom braking",lane_keep_wrong_steer:"unwanted steering",false_warning:"false warnings",failed_to_brake:"failure to brake"};
-(async()=>{MODELS=await j("/models");const mk=$("make");mk.innerHTML=Object.keys(MODELS).map(m=>`<option>${m}</option>`).join("");
- const q=new URLSearchParams(location.search);mk.value=q.get("make")||"CHEVROLET";fill();$("model").value=q.get("model")||"EQUINOX EV";})();
-function fill(){$("model").innerHTML=(MODELS[$("make").value]||[]).map(m=>`<option>${m}</option>`).join("")}
+const AGENT_ID="agent_2901m437c4x0e8fb1tk6v0m44hdx";
+
+(async()=>{MODELS=await j("/models");const mk=$("make");mk.innerHTML=Object.keys(MODELS).map(m=>`<option>${esc(m)}</option>`).join("");
+ const q=new URLSearchParams(location.search);mk.value=q.get("make")||"HYUNDAI";fill();$("model").value=q.get("model")||"TUCSON";
+ if(q.get("make"))check();})();
+function fill(){$("model").innerHTML=(MODELS[$("make").value]||[]).map(m=>`<option>${esc(m)}</option>`).join("")}
 $("make").onchange=fill;
-document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{document.querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));b.classList.add("on");MODE=b.dataset.m});
-$("check").onclick=async()=>{
- const mk=$("make").value, md=$("model").value; $("busy").textContent="Checking live data…";
- const [st,sim,tr,rc]=await Promise.all([j(`/vehicle_status?make=${encodeURIComponent(mk)}&model=${encodeURIComponent(md)}`),
-   j(`/similar_reports?make=${encodeURIComponent(mk)}&model=${encodeURIComponent(md)}&failure_mode=${MODE}&limit=3`),
-   j(`/trend?make=${encodeURIComponent(mk)}&model=${encodeURIComponent(md)}`), j(`/recalls?make=${encodeURIComponent(mk)}&model=${encodeURIComponent(md)}&limit=5`)]);
- $("busy").textContent=""; $("result").classList.remove("hidden");
- const al=st.alarms.filter(a=>a.source==="granite"); const any=st.alarms.length>0;
- const fmt=d=>new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"});
- $("status").className="status "+(any?"red":"green");
- $("status").innerHTML=any?`<b class="big">🔴 Early-warning alarm active for the ${mk} ${md}</b>${(al[0]||st.alarms[0]).stream.replace(/\s*\(.*\)/,"")}: owners are reporting far more than a typical car — <b>${(al[0]||st.alarms[0]).reports_last_26_weeks}</b> reports in six months vs <b>${(al[0]||st.alarms[0]).expected_if_typical}</b> expected. Alarm on since <b>${fmt((al[0]||st.alarms[0]).alarm_since)}</b>.<br><span class="note">You are not alone. This is a statistical warning, not proof of a defect.</span>`
-   :`<b class="big">🟢 No active early-warning alarm for the ${mk} ${md}</b><span class="note">That doesn't mean nothing is wrong. Your report still matters and helps future drivers.</span>`;
- $("nums").innerHTML=`<div class="kpi"><b>${sim.count}</b><span>public reports of ${MODE_TXT[MODE]} on this model</span></div><div class="kpi"><b>${sim.crashes}</b><span>of them mention a crash</span></div><div class="kpi"><b>${st.assist_related_reports_last_26_weeks}</b><span>driver-assist reports in the last 6 months</span></div>`;
- chart&&chart.destroy(); const s=tr.series[MODE]||tr.series.false_braking;
- chart=new Chart($("trend"),{type:"bar",data:{labels:tr.months,datasets:[{label:MODE_TXT[MODE]+" reports",data:s,backgroundColor:css("--s1"),borderRadius:4,maxBarThickness:18}]},
-  options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:css("--muted"),maxTicksLimit:8},grid:{display:false}},y:{beginAtZero:true,ticks:{color:css("--muted"),precision:0},grid:{color:css("--border")}}}}});
- $("trendnote").textContent=`Monthly ${MODE_TXT[MODE]} complaints for the ${mk} ${md}, as coded by IBM Granite.`;
+document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{setMode(b.dataset.m);check(false)});
+function setMode(m){if(!MODE_TXT[m])return;MODE=m;document.querySelectorAll(".chip").forEach(x=>x.classList.toggle("on",x.dataset.m===m))}
+$("check").onclick=()=>check();
+
+function countUp(el,to,dec=0,ms=900){const t0=performance.now();const f=t=>{const k=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-k,3);el.textContent=(to*e).toFixed(dec);if(k<1)requestAnimationFrame(f)};requestAnimationFrame(f)}
+const fmt=d=>new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"});
+
+async function check(scroll=true){
+ const mk=$("make").value, md=$("model").value; $("check").textContent="Checking…";
+ let st,sim,tr,rc;
+ try{[st,sim,tr,rc]=await Promise.all([j(`/vehicle_status?make=${enc(mk)}&model=${enc(md)}`),
+   j(`/similar_reports?make=${enc(mk)}&model=${enc(md)}&failure_mode=${MODE}&limit=6`),
+   j(`/trend?make=${enc(mk)}&model=${enc(md)}`), j(`/recalls?make=${enc(mk)}&model=${enc(md)}&limit=5`)]);}
+ catch(e){$("check").textContent="Check this car";alert("Couldn't reach the data service. Try again in a moment.");return null}
+ $("check").textContent="Check this car"; $("result").classList.remove("hidden");
+ const al=st.alarms.filter(a=>a.source==="granite"), a=al[0]||st.alarms[0];
+ const v=$("verdict");
+ if(a){
+  const n=a.reports_last_26_weeks, e=a.expected_if_typical, x=e>0?n/e:n, what=a.stream.replace(/\s*\(.*\)/,"").toLowerCase();
+  v.className="verdict red";
+  v.innerHTML=`<div class="mult"><span id="mx">0</span>×<small>more than a<br>typical car</small></div>
+   <div><h2>Owners of the ${esc(mk)} ${esc(md)} are reporting ${esc(what)} far more than normal</h2>
+   <div class="bars"><div class="bar"><span>This car</span><i style="--w:100%"></i><b>${n}</b></div><div class="bar typ"><span>Typical car</span><i style="--w:${Math.max(2,100*e/n).toFixed(1)}%"></i><b>${e}</b></div></div>
+   <p class="note" style="margin:6px 0 0">Reports in the last 6 months. Alarm on since <b>${fmt(a.alarm_since)}</b>. <b>You're not imagining it.</b> This is a statistical warning, not proof of a defect.</p></div>`;
+  countUp($("mx"),Math.min(x,999),x<10?1:0);
+ }else{
+  v.className="verdict green";
+  v.innerHTML=`<div class="mult">✓<small>no alarm<br>right now</small></div><div><h2>No early-warning alarm for the ${esc(mk)} ${esc(md)}</h2><p class="note" style="margin:0">That doesn't mean nothing is wrong. If something happened to you, tell the assistant above. Your report helps the next driver.</p></div>`;
+ }
+ requestAnimationFrame(()=>requestAnimationFrame(()=>v.querySelectorAll(".bar i").forEach(i=>i.style.width=i.style.getPropertyValue("--w"))));
+ $("nums").innerHTML=`<div class="kpi"><b data-n="${sim.count}">0</b><span>public reports of ${MODE_TXT[MODE]} on this model</span></div><div class="kpi"><b data-n="${sim.crashes}">0</b><span>of them mention a crash</span></div><div class="kpi"><b data-n="${st.assist_related_reports_last_26_weeks}">0</b><span>driver-assist reports in the last 6 months</span></div>`;
+ $("nums").querySelectorAll("b").forEach(b=>countUp(b,+b.dataset.n));
+ chart&&chart.destroy(); const s=tr.series[MODE]||tr.series.false_braking, col=a?css("--red"):css("--s1");
+ chart=new Chart($("trend"),{type:"bar",data:{labels:tr.months,datasets:[{label:MODE_TXT[MODE]+" reports",data:s,backgroundColor:s.map((_,i)=>i>=s.length-6?col:col+"66"),borderRadius:6,maxBarThickness:18}]},
+  options:{responsive:true,maintainAspectRatio:false,animation:{duration:900,easing:"easeOutQuart"},plugins:{legend:{display:false}},scales:{x:{ticks:{color:css("--muted"),maxTicksLimit:8},grid:{display:false}},y:{beginAtZero:true,ticks:{color:css("--muted"),precision:0},grid:{color:css("--border")}}}}});
+ $("trendnote").textContent=`Monthly ${MODE_TXT[MODE]} complaints for the ${mk} ${md}, read and sorted by IBM Granite. The last six months are highlighted.`;
  const RX={false_braking:/unexpected(ly)?\s+(apply|activate|brak)|prematurely|false|unintended|inadvertent|phantom/i,lane_keep_wrong_steer:/lane|steer/i,false_warning:/warning|alert|false/i,failed_to_brake:/fail to (engage|apply)|not (apply|engage)|may not brake|fail to brake|reduced braking/i};
- const adas=rc.recalls.filter(r=>r.topic==="adas"); const match=adas.filter(r=>RX[MODE].test(r.defect));
- $("recalls").innerHTML=(rc.recalls.length?`<p>${match.length?`<span class="badge green">A recall covers this problem</span> Check whether <b>your</b> vehicle is included (enter your VIN at <a href="https://www.nhtsa.gov/recalls" target="_blank" rel="noopener">nhtsa.gov/recalls</a>) and ask your dealer for the fix.`:`<span class="badge red">No recall for ${MODE_TXT[MODE]} yet</span> ${adas.length?"There are other driver-assist recalls on this model (below), but none describes this problem. ":""}Your report matters, because recalls follow evidence.`}</p>`+
-   rc.recalls.map(r=>`<div class="quote"><b>${r.campaign}</b> · ${r.date} · ${r.years||""} · ${Number(r.vehicles||0).toLocaleString()} vehicles<br>${r.component}<br>${r.defect.slice(0,260)}…</div>`).join(""):`<p><span class="badge red">No related recall found</span> There is no driver-assist or brake recall for this model in NHTSA's database yet. Reporting is especially important.</p>`);
- $("todo").innerHTML=st.what_to_do.map(t=>`<li>${t}</li>`).join("")+`<li>Fill in the report below, or tap the voice assistant and just tell it what happened.</li>`;
- $("examples").innerHTML=sim.examples.length?sim.examples.map(e=>`<div class="quote">“${e.excerpt}…”<br><span class="note">Complaint ${e.complaint_id} · received ${e.received.slice(0,4)}-${e.received.slice(4,6)}</span></div>`).join(""):`<p class="note">No matching complaints yet.</p>`;
- $("result").scrollIntoView({behavior:"smooth"});
+ const adas=rc.recalls.filter(r=>r.topic==="adas"), match=adas.filter(r=>RX[MODE].test(r.defect));
+ $("recalls").innerHTML=(rc.recalls.length?`<p>${match.length?`<span class="badge green">A recall covers this problem</span> Enter your VIN at <a href="https://www.nhtsa.gov/recalls" target="_blank" rel="noopener">nhtsa.gov/recalls</a> to see if <b>your</b> car is included, then ask your dealer for the fix.`:`<span class="badge red">No recall for ${MODE_TXT[MODE]} yet</span> ${adas.length?"Other driver-assist recalls exist for this model, but none describes this problem. ":""}Recalls follow evidence, so your report matters.`}</p>`+
+   rc.recalls.slice(0,3).map(r=>`<div class="quote"><b>${esc(r.campaign)}</b> · ${esc(r.date)} · ${Number(r.vehicles||0).toLocaleString()} vehicles<br>${esc(r.defect.slice(0,180))}…</div>`).join(""):`<p><span class="badge red">No related recall yet</span> There's no driver-assist or brake recall for this model in NHTSA's database. Reporting matters even more.</p>`);
+ const todo=[...st.what_to_do,"Tell the assistant what happened. It writes your NHTSA report for you."];
+ $("todo").innerHTML=todo.map(t=>`<li><label><input type="checkbox"><span>${esc(t)}</span></label></li>`).join("");
+ const prog=()=>{const c=$("todo").querySelectorAll("input:checked").length;$("prog").textContent=c===todo.length?"All done. You've done everything you can today.":`${c} of ${todo.length} done`;$("prog").classList.toggle("done",c===todo.length)};
+ $("todo").querySelectorAll("input").forEach(i=>i.onchange=prog);prog();
+ $("examples").innerHTML=sim.examples.length?sim.examples.map(e=>`<div class="story"><p>${esc(e.excerpt)}…</p><span>Owner complaint · ${esc(e.received.slice(0,4))}-${esc(e.received.slice(4,6))}</span></div>`).join(""):`<p class="note">No matching complaints yet.</p>`;
+ if(scroll)$("result").scrollIntoView({behavior:"smooth",block:"start"});
+ return {st,sim,a};
+}
+
+/* ---------- Voice assistant (ElevenLabs) ---------- */
+let conv=null, starting=false;
+const LABEL={idle:["Tap to talk","Free and anonymous. No VIN or personal details."],connecting:["Connecting…","Allow the microphone if your browser asks."],
+ listening:["Listening… tell me what happened","Tap the circle to end the call."],speaking:["AutoVigil is speaking","You can interrupt any time."]};
+function setState(s){$("hero").className="hero "+s;$("pill").className="pill"+(s==="listening"||s==="speaking"?" on "+s:"");$("pillTxt").textContent=s==="speaking"?"AutoVigil is speaking":"Listening…";$("orbLabel").textContent=LABEL[s][0];$("orbSub").textContent=LABEL[s][1]}
+function bubble(role,text){if(!text)return;const d=document.createElement("div");d.className="bub "+role;d.textContent=text;$("chat").appendChild(d);$("chat").scrollTop=$("chat").scrollHeight}
+
+const asBool=v=>v===true||v===false?v:(/^(yes|true|y)$/i.test(String(v))?true:/^(no|false|n)$/i.test(String(v))?false:null);
+const asNum=v=>{const n=parseFloat(v);return Number.isFinite(n)?n:null};
+const clientTools={
+ show_vehicle: async(p)=>{
+  try{const st=await j(`/vehicle_status?make=${enc(p.make||"")}&model=${enc(p.model||"")}`);
+   if(!MODELS[st.make]||!(MODELS[st.make]||[]).includes(st.model))return "That model isn't in AutoVigil's list, so nothing was shown on screen.";
+   $("make").value=st.make;fill();$("model").value=st.model;setMode(p.failure_mode);bubble("sys",`Showing the ${st.make} ${st.model} on screen`);
+   const r=await check();return r?`The ${st.make} ${st.model} is now on the driver's screen. ${r.a?"The red alarm is showing.":"It shows no active alarm."}`:"The screen could not load the data.";
+  }catch(e){return "Could not show the car on screen."}},
+ show_report_draft: async(p)=>{
+  let what=String(p.what_happened||"the vehicle's driver-assist system behaved unexpectedly");
+  let date=null; if(p.incident_date){if(/^\d{4}-\d{2}-\d{2}$/.test(p.incident_date))date=p.incident_date;else what+=` (when: ${p.incident_date})`}
+  const body={make:$("make").value,model:$("model").value,what_happened:what,incident_date:date,model_year:asNum(p.model_year)?Math.round(asNum(p.model_year)):null,
+   speed_mph:asNum(p.speed_mph),feature_engaged:p.feature_engaged||null,obstacle_present:asBool(p.obstacle_present),road_and_weather:p.road_and_weather||null,
+   warning_messages:p.warning_messages||null,recent_software_update:asBool(p.recent_software_update),crash:asBool(p.crash),injuries:asBool(p.injuries),
+   times_happened:asNum(p.times_happened)?Math.round(asNum(p.times_happened)):null,dealer_visited:asBool(p.dealer_visited)};
+  try{const d=await j("/draft_complaint",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+   showDraft(d);bubble("sys","Your report is on screen");
+   return d.missing_fields.length?`The draft report is on screen. Still missing: ${d.missing_fields.join(", ").replaceAll("_"," ")}.`:"The draft report is on screen and complete.";
+  }catch(e){return "Could not create the draft report."}}
 };
-const F=["r_date","r_year","r_speed","r_feat","r_obst","r_times","r_road","r_warn","r_upd","r_crash","r_inj","r_dealer"];
-function comp(){const n=F.filter(id=>$(id).value!=="").length;const p=Math.round(100*n/F.length);$("pct").textContent=p+"%";$("bar").style.width=p+"%";}
-F.concat(["r_what"]).forEach(id=>$(id).addEventListener("input",comp));
-const B=v=>v===""?null:v==="true";
-$("draft").onclick=async()=>{
- const body={make:$("make").value,model:$("model").value,model_year:$("r_year").value?+$("r_year").value:null,incident_date:$("r_date").value||null,
-  what_happened:$("r_what").value||"the vehicle's driver-assist system behaved unexpectedly.",speed_mph:$("r_speed").value?+$("r_speed").value:null,
-  feature_engaged:$("r_feat").value||null,obstacle_present:B($("r_obst").value),road_and_weather:$("r_road").value||null,warning_messages:$("r_warn").value||null,
-  recent_software_update:B($("r_upd").value),crash:B($("r_crash").value),injuries:B($("r_inj").value),times_happened:$("r_times").value?+$("r_times").value:null,dealer_visited:B($("r_dealer").value)};
- const d=await j("/draft_complaint",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
- $("drafttext").textContent=d.draft_text+(d.missing_fields.length?`\n\n(Still missing: ${d.missing_fields.join(", ").replaceAll("_"," ")})`:"");
- $("draftout").classList.remove("hidden");};
+
+let typer=null;
+function showDraft(d){
+ const card=$("reportcard"),total=12,have=total-d.missing_fields.length,p=Math.round(100*have/total);
+ card.classList.remove("hidden");$("pct").textContent=p+"%";$("ring").style.strokeDashoffset=201*(1-p/100);
+ $("missing").innerHTML=d.missing_fields.length?`<p class="note" style="margin:8px 0 0">To make it stronger, tell the assistant:</p><div class="miss">${d.missing_fields.map(f=>`<span>${esc(f.replaceAll("_"," "))}</span>`).join("")}</div>`:"";
+ const t=d.draft_text,el=$("drafttext");clearInterval(typer);let i=0;el.textContent="";
+ typer=setInterval(()=>{i+=6;el.textContent=t.slice(0,i);if(i>=t.length)clearInterval(typer)},12);
+ card.scrollIntoView({behavior:"smooth",block:"center"});
+}
 $("copy").onclick=()=>{navigator.clipboard.writeText($("drafttext").textContent);$("copy").textContent="Copied ✓"};
+
+async function start(textOnly=false){
+ if(conv||starting)return conv; starting=true; setState("connecting");
+ try{
+  if(!textOnly)await navigator.mediaDevices.getUserMedia({audio:true});
+  conv=await ElevenLabsClient.Conversation.startSession({agentId:AGENT_ID,connectionType:"websocket",textOnly,clientTools,
+   onMessage:m=>bubble((m.role||m.source)==="user"?"user":"agent",m.message),
+   onModeChange:({mode})=>setState(mode==="speaking"?"speaking":"listening"),
+   onDisconnect:()=>{conv=null;setState("idle")},
+   onError:msg=>{bubble("sys","Connection problem: "+msg)}});
+  setState(textOnly?"listening":"listening"); if(textOnly)$("orbLabel").textContent="Text chat on";
+ }catch(e){
+  conv=null;setState("idle");
+  if(!textOnly&&e&&e.name==="NotAllowedError"){bubble("sys","Microphone blocked. You can type below instead.")}
+  else bubble("sys","Couldn't connect to the assistant. Please try again.");
+ }finally{starting=false}
+ return conv;
+}
+$("hang").onclick=async()=>{if(conv){await conv.endSession();conv=null}setState("idle")};
+$("orb").onclick=async()=>{if(conv){await conv.endSession();conv=null;setState("idle")}else start()};
+$("typeForm").onsubmit=async ev=>{ev.preventDefault();const t=$("typeIn").value.trim();if(!t)return;
+ const c=conv||await start(true); if(!c)return; $("typeIn").value=""; bubble("user",t); c.sendUserMessage(t)};
+(function loop(){if(conv){const s=$("hero").classList.contains("speaking");let v=0;try{v=s?conv.getOutputVolume():conv.getInputVolume()}catch(e){}const vv=Math.min(1,v*1.6).toFixed(3);$("orb").style.setProperty("--v",vv);$("pill").style.setProperty("--v",vv)}else $("orb").style.setProperty("--v",0);requestAnimationFrame(loop)})();
 </script></body></html>

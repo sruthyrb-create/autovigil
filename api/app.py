@@ -260,7 +260,7 @@ def dashboard(): return FileResponse(os.path.join(HERE, "dashboard.html"))
 
 @app.get("/static/{name}", include_in_schema=False)
 def static(name: str):
-    if name not in ("chart.umd.js", "chartjs-plugin-annotation.min.js", "av.css"): raise HTTPException(404)
+    if name not in ("chart.umd.js", "chartjs-plugin-annotation.min.js", "av.css", "elevenlabs-client.js"): raise HTTPException(404)
     return FileResponse(os.path.join(os.path.dirname(__file__), "static", name), media_type="text/css" if name.endswith(".css") else "application/javascript")
 
 
