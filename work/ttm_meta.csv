@@ -1,0 +1,37 @@
+id,kind,action,open,total
+DP19001|nhtsa_code,event,DP19001,2019-04-08,591
+DP19001|granite,event,DP19001,2019-04-08,284
+PE22002|nhtsa_code,event,PE22002,2022-02-16,3676
+PE22002|granite,event,PE22002,2022-02-16,2497
+PE22003|nhtsa_code,event,PE22003,2022-02-21,2393
+PE22003|granite,event,PE22003,2022-02-21,1253
+PE23010|nhtsa_code,event,PE23010,2023-05-26,50
+PE23010|granite,event,PE23010,2023-05-26,22
+PE23017|nhtsa_code,event,PE23017,2023-09-28,239
+PE23017|granite,event,PE23017,2023-09-28,86
+PE24008|nhtsa_code,event,PE24008,2024-03-07,228
+PE24008|granite,event,PE24008,2024-03-07,101
+PE24013|nhtsa_code,event,PE24013,2024-05-08,211
+PE24013|granite,event,PE24013,2024-05-08,24
+PE24025|nhtsa_code,event,PE24025,2024-09-10,24
+PE24025|granite,event,PE24025,2024-09-10,17
+CTRL|CHEVROLET|EQUINOX|granite,control,,,34
+CTRL|HONDA|PILOT|granite,control,,,139
+CTRL|AUDI|Q5|granite,control,,,30
+CTRL|HONDA|CIVIC|granite,control,,,106
+CTRL|JEEP|GRAND CHEROKEE|granite,control,,,49
+CTRL|HYUNDAI|ELANTRA|granite,control,,,28
+CTRL|HYUNDAI|SANTA FE|granite,control,,,39
+CTRL|JEEP|COMPASS|granite,control,,,36
+CTRL|HYUNDAI|PALISADE|granite,control,,,43
+CTRL|FORD|F-150|granite,control,,,35
+CTRL|NISSAN|KICKS|granite,control,,,36
+CTRL|VOLKSWAGEN|ID.4|granite,control,,,27
+CTRL|HONDA|PROLOGUE|granite,control,,,78
+CTRL|CHEVROLET|BLAZER EV|granite,control,,,25
+CTRL|HONDA|HR-V|granite,control,,,21
+CTRL|TOYOTA|RAV4|granite,control,,,21
+CTRL|VOLKSWAGEN|ATLAS CROSS SPORT|granite,control,,,25
+CTRL|VOLKSWAGEN|TIGUAN|granite,control,,,44
+CTRL|HYUNDAI|TUCSON|granite,control,,,151
+CTRL|NISSAN|ALTIMA|granite,control,,,43

@@ -17,6 +17,7 @@ LATEST = S.week.max()
 def _csv(name):
     p = os.path.join(DATA, name); return pd.read_csv(p) if os.path.exists(p) else pd.DataFrame()
 GT, BT_N, BT_G = _csv("ground_truth.csv"), _csv("backtest_disproportionality.csv"), _csv("backtest_granite.csv")
+BT_T = _csv("backtest_ttm.csv")
 
 MODES = ["false_braking", "failed_to_brake", "false_warning", "lane_keep_wrong_steer", "lane_keep_failed",
          "acc_speed_fault", "self_driving_behavior", "system_unavailable", "conventional_brake_fault", "other"]
@@ -205,6 +206,7 @@ def alarm_detail(make: str, model: str, stream: str = Query("FALSE_BRAKING", des
          summary="Research results: how many weeks before NHTSA opened each investigation AutoVigil would have alarmed.")
 def backtest():
     return {"nhtsa_code_detector": BT_N.fillna("").to_dict("records"), "granite_detector": BT_G.fillna("").to_dict("records"),
+            "ibm_granite_ttm_surge_detector": BT_T.fillna("").to_dict("records"),
             "method": "Weekly as-of replay 2016-2026, 26-week incident window, PRR>=2 & chi2>=4 & n>=3. Lead = open date - start of alarm run active within 8 weeks of opening."}
 
 @app.get("/health", include_in_schema=False)
@@ -222,6 +224,7 @@ def _events():
         f = lambda d, c: None if d.empty or pd.isna(d[c].iloc[0]) else float(d[c].iloc[0])
         out.append({"action": r.action, "label": r.label, "open": r.odate, "make": r.make, "models": ast.literal_eval(r.models),
                     "group": r.group, "nhtsa_code_lead_wk": f(n, "prr_signal_lead_wk"), "granite_lead_wk": f(g, "granite_prr_signal_lead_wk"),
+                    "ttm_lead_wk": (lambda t: None if t.empty or pd.isna(t.ttm_lead_wk.iloc[0]) else float(t.ttm_lead_wk.iloc[0]))(BT_T[BT_T.id == f"{r.action}|nhtsa_code"] if not BT_T.empty else BT_T),
                     "nhtsa_code_alarm_start": None if n.empty or pd.isna(n.prr_signal_run_start.iloc[0]) else n.prr_signal_run_start.iloc[0]})
     return out
 
@@ -251,3 +254,24 @@ def dashboard(): return FileResponse(os.path.join(os.path.dirname(__file__), "da
 def static(name: str):
     if name not in ("chart.umd.js", "chartjs-plugin-annotation.min.js"): raise HTTPException(404)
     return FileResponse(os.path.join(os.path.dirname(__file__), "static", name), media_type="application/javascript")
+
+
+# ---------------- ElevenLabs voice ----------------
+import json as _json, urllib.request as _ur
+from fastapi.responses import Response
+class SpeakReq(BaseModel):
+    text: str
+
+@app.post("/speak", include_in_schema=False)
+def speak(req: SpeakReq):
+    key = os.environ.get("ELEVENLABS_API_KEY")
+    if not key: raise HTTPException(503, "voice not configured")
+    voice = os.environ.get("ELEVENLABS_VOICE_ID", "JBFqnCBsd6RMkjVDRZzb")
+    body = _json.dumps({"text": req.text[:700], "model_id": os.environ.get("ELEVENLABS_MODEL", "eleven_flash_v2_5")}).encode()
+    r = _ur.Request(f"https://api.elevenlabs.io/v1/text-to-speech/{voice}?output_format=mp3_44100_128", data=body,
+                    headers={"xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg"})
+    try:
+        with _ur.urlopen(r, timeout=30) as resp: audio = resp.read()
+    except Exception as e:
+        raise HTTPException(502, f"voice service error: {str(e)[:120]}")
+    return Response(content=audio, media_type="audio/mpeg")

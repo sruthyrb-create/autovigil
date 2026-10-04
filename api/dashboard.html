@@ -23,7 +23,7 @@ button{cursor:pointer}button.on{border-color:var(--accent);color:var(--accent)}
 table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)}th{color:var(--text2);font-weight:600}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}.tw{overflow-x:auto}
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--text2)}.sw{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:6px}
-footer{color:var(--muted);font-size:13px;margin-top:24px}
+button.say{margin-left:6px;font-size:13px;padding:3px 9px}footer{color:var(--muted);font-size:13px;margin-top:24px}
 </style></head><body><div class="wrap">
 <h1>AutoVigil</h1>
 <p class="sub">Early warning for driver-assist (ADAS) defects from public NHTSA complaints — drug-safety statistics + IBM Granite. Replayed week by week with no peeking at the future.</p>
@@ -37,7 +37,7 @@ footer{color:var(--muted);font-size:13px;margin-top:24px}
 <div class="card">
  <h2>Replay: would AutoVigil have seen it coming?</h2>
  <div class="row"><label for="ev">Investigation</label><select id="ev"></select><button id="logb" class="on">Log scale</button></div>
- <p class="headline" id="headline"></p>
+ <p class="headline"><span id="headline"></span> <button class="say" data-src="headline" title="Read aloud (ElevenLabs)">🔊 Listen</button></p>
  <div class="legend"><span><i class="sw" style="background:var(--s1)"></i>Complaints in last 26 weeks</span><span><i class="sw" style="background:var(--exp)"></i>Expected if this model were typical</span><span><i class="sw" style="background:var(--alarm);height:10px"></i>Alarm active</span><span><i class="sw" style="background:var(--alarmline)"></i>NHTSA opens investigation</span></div>
  <div class="grid2">
   <div><p class="lbl">NHTSA component codes</p><div class="chartbox"><canvas id="c1"></canvas></div></div>
@@ -48,17 +48,20 @@ footer{color:var(--muted);font-size:13px;margin-top:24px}
 
 <div class="card">
  <h2>Alarm board</h2>
- <div class="row"><label for="asof">As of</label><input type="date" id="asof"><button id="b1" class="on">Granite-coded</button><button id="b2">NHTSA codes</button><button id="now">Latest</button></div>
+ <div class="row"><label for="asof">As of</label><input type="date" id="asof"><button id="b1" class="on">Granite-coded</button><button id="b2">NHTSA codes</button><button id="now">Latest</button><button class="say" data-src="alarms" title="Read aloud (ElevenLabs)">🔊 Read top alarms</button></div>
  <div class="tw"><table><thead><tr><th>Make</th><th>Model</th><th>Problem</th><th class="num">Reports (26 wk)</th><th class="num">Expected</th><th class="num">PRR</th><th>Alarm since</th></tr></thead><tbody id="alarms"></tbody></table></div>
  <p class="note" id="alnote"></p>
 </div>
 
 <div class="card">
- <h2>Backtest results</h2>
- <div class="tw"><table><thead><tr><th>Investigation</th><th>Opened</th><th class="num">Weeks early (NHTSA codes)</th><th class="num">Weeks early (Granite)</th></tr></thead><tbody id="bt"></tbody></table></div>
+ <h2>Backtest results</h2><p class="note">Three detectors, same no-peeking replay. Disproportionality (comparing a model against all others) catches slow-building problems early; IBM Granite TTM (forecasting a model against its own history) only fires on sudden surges and adapts to slowly rising levels, so it alarms late or misses.</p>
+ <div class="tw"><table><thead><tr><th>Investigation</th><th>Opened</th><th class="num">Weeks early (NHTSA codes)</th><th class="num">Weeks early (Granite)</th><th class="num">Weeks early (Granite TTM forecast)</th></tr></thead><tbody id="bt"></tbody></table></div>
 </div>
 
-<footer>Built on IBM watsonx.ai (Granite 4 coding), watsonx Orchestrate (driver &amp; analyst agents), IBM Code Engine (this API). Data: NHTSA ODI public complaints &amp; investigations. Signals are statistical hypotheses from voluntary reports — not proof of a defect, not repair or legal advice. <a href="/docs" style="color:var(--accent)">API docs</a></footer>
+<div class="card"><h2>🎙 Talk to AutoVigil</h2><p class="note">Had a scary braking or steering moment? Press the call button (bottom right), allow the microphone and tell AutoVigil your car and what happened. It checks the live alarm data and talks you through what to do next. Voice by ElevenLabs.</p></div>
+<elevenlabs-convai agent-id="agent_2901m437c4x0e8fb1tk6v0m44hdx"></elevenlabs-convai>
+<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+<footer>Built on IBM watsonx.ai (Granite 4 coding), ElevenLabs (voice), watsonx Orchestrate (driver &amp; analyst agents), IBM Code Engine (this API). Data: NHTSA ODI public complaints &amp; investigations. Signals are statistical hypotheses from voluntary reports — not proof of a defect, not repair or legal advice. <a href="/docs" style="color:var(--accent)">API docs</a></footer>
 </div>
 <script>
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -88,15 +91,24 @@ async function showEvent(a){
 }
 async function showAlarms(){
   const a=document.getElementById("asof").value;const d=await j(`/alarms?limit=15&source=${src}`+(a?`&as_of=${a}`:""));
-  document.getElementById("alarms").innerHTML=d.alarms.map(r=>`<tr><td>${r.make}</td><td>${r.model}</td><td>${r.stream}</td><td class="num">${r.reports_last_26_weeks}</td><td class="num">${r.expected}</td><td class="num">${r.prr}</td><td>${r.alarm_since}</td></tr>`).join("")||`<tr><td colspan=7>No active alarms</td></tr>`;
+  LASTAL=d.alarms;document.getElementById("alarms").innerHTML=d.alarms.map(r=>`<tr><td>${r.make}</td><td>${r.model}</td><td>${r.stream}</td><td class="num">${r.reports_last_26_weeks}</td><td class="num">${r.expected}</td><td class="num">${r.prr}</td><td>${r.alarm_since}</td></tr>`).join("")||`<tr><td colspan=7>No active alarms</td></tr>`;
   document.getElementById("alnote").textContent=`Week of ${d.as_of_week} · ${d.n_active} shown, strongest first (BCPNN IC025).`;
 }
+let LASTAL=[];
+async function say(text,btn){const o=btn.textContent;btn.textContent="… speaking";btn.disabled=true;
+  try{const r=await fetch("/speak",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text})});
+   if(!r.ok)throw new Error(r.status);const a=new Audio(URL.createObjectURL(await r.blob()));a.onended=()=>{btn.textContent=o;btn.disabled=false};await a.play();}
+  catch(e){btn.textContent="voice unavailable";setTimeout(()=>{btn.textContent=o;btn.disabled=false},2500)}}
+document.addEventListener("click",ev=>{const b=ev.target.closest("button.say");if(!b)return;
+  if(b.dataset.src==="headline")say(document.getElementById("headline").textContent,b);
+  else{const t=LASTAL.slice(0,3).map((r,i)=>`${i+1}. ${r.make} ${r.model}: ${r.stream.replace(/\(.*\)/,"")}, ${r.reports_last_26_weeks} reports in six months versus ${r.expected} expected, alarm since ${new Date(r.alarm_since).toLocaleDateString("en-US",{month:"long",year:"numeric"})}.`).join(" ");
+   say(t?("AutoVigil top alarms. "+t+" These are statistical early warnings, not proof of a defect."):"No active alarms.",b)}});
 (async()=>{
   EV=await j("/events");const s=document.getElementById("ev");
   s.innerHTML=EV.map(e=>`<option value="${e.action}">${e.label} (${e.action})</option>`).join("");
   s.value="PE22002";s.onchange=()=>{CUR=s.value;showEvent(CUR)};showEvent(CUR);
   const lb=document.getElementById("logb");lb.onclick=()=>{LOG=!LOG;lb.className=LOG?"on":"";showEvent(CUR)};
-  document.getElementById("bt").innerHTML=EV.map(e=>`<tr><td>${e.label} (${e.action})</td><td>${e.open}</td><td class="num">${e.nhtsa_code_lead_wk==null?"missed":Math.round(e.nhtsa_code_lead_wk)}</td><td class="num">${e.granite_lead_wk==null?"missed":Math.round(e.granite_lead_wk)}</td></tr>`).join("");
+  document.getElementById("bt").innerHTML=EV.map(e=>`<tr><td>${e.label} (${e.action})</td><td>${e.open}</td><td class="num">${e.nhtsa_code_lead_wk==null?"missed":Math.round(e.nhtsa_code_lead_wk)}</td><td class="num">${e.granite_lead_wk==null?"missed":Math.round(e.granite_lead_wk)}</td><td class="num">${e.ttm_lead_wk==null?"missed":Math.round(e.ttm_lead_wk)}</td></tr>`).join("");
   const b1=document.getElementById("b1"),b2=document.getElementById("b2");
   b1.onclick=()=>{src="granite";b1.className="on";b2.className="";showAlarms()};b2.onclick=()=>{src="nhtsa_code";b2.className="on";b1.className="";showAlarms()};
   document.getElementById("asof").onchange=showAlarms;document.getElementById("now").onclick=()=>{document.getElementById("asof").value="";showAlarms()};

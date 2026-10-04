@@ -36,3 +36,10 @@ Default thresholds (n>=3, PRR>=2, chi2>=4):
    complaints, not ADAS; Honda Insight/Passport - few reports). At matched burden (~17-19/yr) the two are similar
    (NHTSA 6/8 @54 wk vs Granite 5/8 @54 wk). Granite's added value: alarms are about a specific failure (phantom braking),
    not a component, so they are easier to act on. Table: work/alarm_burden_rq2.csv; per-event: work/backtest_granite.csv
+
+## RQ5 - IBM Granite TTM (granite-ttm-512-96-r2, watsonx.ai) surge detector vs disproportionality
+Every 14 days, TTM forecasts the next 28 days of 7-day-rolling daily counts from the previous 512 days; alarm if observed >= 3 reports and > 2x forecast.
+- Caught 4/8 (NHTSA-code streams: Nissan Rogue 3 wk, Tesla 2 wk, Fisker 4 wk, VinFast 2 wk early); Granite streams 3/8. Missed Honda Accord/CR-V, Freightliner, VW Atlas, Honda Insight.
+- Control streams (20 non-investigated phantom-braking models): 17% alarm in a given year.
+=> Self-referential forecasting adapts to slowly rising complaint levels and only flags abrupt surges, late. Comparing a model against
+   all other models (PRR/BCPNN) is far better for early warning (8/8, median 46 wk). TTM is a complementary acute-surge detector.
