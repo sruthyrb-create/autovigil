@@ -1,0 +1,28 @@
+name: autovigil
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pandas
+  - numpy
+  - scipy
+  - pyarrow
+  - ruptures
+  - matplotlib
+  - plotly
+  - streamlit
+  - fastapi
+  - uvicorn
+  - jupyterlab
+  - ipykernel
+  - pip
+  - pip:
+      - google-genai
+      - ibm-watsonx-ai
+      - ibmcloudant
+      - ibm-watson
+      - elevenlabs
+      - psycopg[binary]
+      - python-dotenv
+      # IBM time-series models (TTM, TSPulse), installed last:
+      - granite-tsfm
