@@ -27,3 +27,12 @@ Caveats: "no investigation" is not "no defect", so alarm counts are upper bounds
 - Main error: Granite over-uses system_unavailable (12 of 42 disagreements: conventional_brake_fault/other -> system_unavailable).
 - v1 overlap only 30 complaints (acc 0.77, kappa 0.66) - not comparable.
 - Disagreements: work/label_disagreements_v2.csv
+
+## RQ2 - Granite-coded streams vs NHTSA component-code streams (all 29,350 coded; 24,836 valid in FCA/LANE/ADAS groups, 781 models)
+Default thresholds (n>=3, PRR>=2, chi2>=4):
+- NHTSA codes: 8/8 caught, median lead 46 wk, 288 streams alarmed 2016-26 (53.5/yr), 13 later investigated (4.5%).
+- Granite failure modes: 6/8 caught, median lead 39 wk, 138 streams alarmed (27.0/yr), 13 later investigated (9.4%).
+=> Granite coding halves the alarm burden and doubles precision, at the cost of 2 misses (VW Atlas - mostly parking-brake
+   complaints, not ADAS; Honda Insight/Passport - few reports). At matched burden (~17-19/yr) the two are similar
+   (NHTSA 6/8 @54 wk vs Granite 5/8 @54 wk). Granite's added value: alarms are about a specific failure (phantom braking),
+   not a component, so they are easier to act on. Table: work/alarm_burden_rq2.csv; per-event: work/backtest_granite.csv

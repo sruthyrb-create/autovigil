@@ -1,0 +1,11 @@
+source,min_reports,min_PRR,caught,median_lead_wk,streams_alarmed,of_which_probed,alarms_per_year
+nhtsa_code,3,2,8/8,46.4,288,13,53.5
+nhtsa_code,5,2,7/8,64.3,189,13,36.6
+nhtsa_code,10,2,6/8,54.1,78,11,19.1
+nhtsa_code,5,3,6/8,42.3,152,13,28.4
+nhtsa_code,10,3,5/8,48.3,60,11,14.2
+granite,3,2,6/8,39.1,138,13,27.0
+granite,5,2,5/8,54.3,82,13,17.4
+granite,10,2,4/8,28.6,31,9,8.1
+granite,5,3,5/8,54.3,77,13,16.2
+granite,10,3,4/8,28.6,27,8,7.0
