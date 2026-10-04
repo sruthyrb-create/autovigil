@@ -97,6 +97,7 @@ def vehicle_status(make: str = Query(..., description="Vehicle make, e.g. TESLA,
     return {"make": mk, "model": md, "as_of_week": str(wk.date()), "alarm_active": bool(alarms),
             "alarms": alarms, "assist_related_reports_last_26_weeks": int(len(c)),
             "reports_by_failure_mode": {k: int(v) for k, v in counts.items() if k in MODES},
+            "existing_recalls": recalls(make, model, 3),
             "what_to_do": ["Check open recalls and software updates for your VIN at nhtsa.gov/recalls.",
                            "If the problem is phantom braking or steering, read the owner's manual section on how to adjust or switch off that assist feature, and tell your dealer.",
                            "File a detailed NHTSA complaint (speed, feature engaged, conditions, software version) - AutoVigil can draft it."],
@@ -247,13 +248,20 @@ def event_series(action: str):
                               "alarm": [bool(v) if not pd.isna(v) else False for v in h.alarm]}
     return res
 
+HERE = os.path.dirname(__file__)
 @app.get("/", include_in_schema=False)
-def dashboard(): return FileResponse(os.path.join(os.path.dirname(__file__), "dashboard.html"))
+def home(): return FileResponse(os.path.join(HERE, "home.html"))
+@app.get("/driver", include_in_schema=False)
+def driver_page(): return FileResponse(os.path.join(HERE, "driver.html"))
+@app.get("/analyst", include_in_schema=False)
+def analyst_page(): return FileResponse(os.path.join(HERE, "analyst.html"))
+@app.get("/research", include_in_schema=False)
+def dashboard(): return FileResponse(os.path.join(HERE, "dashboard.html"))
 
 @app.get("/static/{name}", include_in_schema=False)
 def static(name: str):
-    if name not in ("chart.umd.js", "chartjs-plugin-annotation.min.js"): raise HTTPException(404)
-    return FileResponse(os.path.join(os.path.dirname(__file__), "static", name), media_type="application/javascript")
+    if name not in ("chart.umd.js", "chartjs-plugin-annotation.min.js", "av.css"): raise HTTPException(404)
+    return FileResponse(os.path.join(os.path.dirname(__file__), "static", name), media_type="text/css" if name.endswith(".css") else "application/javascript")
 
 
 # ---------------- ElevenLabs voice ----------------
@@ -275,3 +283,105 @@ def speak(req: SpeakReq):
     except Exception as e:
         raise HTTPException(502, f"voice service error: {str(e)[:120]}")
     return Response(content=audio, media_type="audio/mpeg")
+
+
+# ---------------- driver + analyst apps ----------------
+R = pd.read_parquet(os.path.join(DATA, "recalls.parquet")) if os.path.exists(os.path.join(DATA, "recalls.parquet")) else pd.DataFrame()
+RV = _csv("recall_validation.csv")
+_cnt = (C.make.str.upper() + "|" + C.model.str.upper()).value_counts()
+MODELS = {}
+for k, v in _cnt[_cnt >= 5].items():
+    mk, md = k.split("|"); MODELS.setdefault(mk, []).append(md)
+MODELS = {k: sorted(v) for k, v in sorted(MODELS.items())}
+
+def _recalls_for(make, model):
+    if R.empty: return R
+    mk, md = _resolve(make, model)
+    m = R[(R.make.str.upper() == mk) & R.model.str.upper().apply(lambda v: v == md or v.startswith(md) or md.startswith(v))]
+    return m.sort_values("rcdate", ascending=False)
+
+@app.get("/models", include_in_schema=False)
+def models(): return MODELS
+
+@app.get("/recalls", operation_id="get_recalls", summary="Driver-assist and brake safety recalls already issued for this car model.")
+def recalls(make: str, model: str, limit: int = Query(5, ge=1, le=20)):
+    m = _recalls_for(make, model)
+    return {"count_adas": int((m.topic == "adas").sum()) if len(m) else 0, "count_brakes": int((m.topic == "brakes").sum()) if len(m) else 0,
+            "recalls": [{"campaign": r.campno, "date": f"{r.rcdate[:4]}-{r.rcdate[4:6]}-{r.rcdate[6:]}", "model": r.model, "years": r.years,
+                         "topic": r.topic, "component": r.compname, "vehicles": r.potaff, "defect": r.defect, "remedy": r.remedy}
+                        for r in m.head(limit).itertuples()]}
+
+@app.get("/trend", include_in_schema=False)
+def trend(make: str, model: str, months: int = 36):
+    c = C[_mm_mask(C, make, model) & C.ldate_dt.notna()]
+    end = C.ldate_dt.max().to_period("M"); idx = pd.period_range(end - months + 1, end, freq="M")
+    out = {}
+    for f in ["false_braking", "lane_keep_wrong_steer", "false_warning", "system_unavailable"]:
+        out[f] = c[c.failure_mode == f].ldate_dt.dt.to_period("M").value_counts().reindex(idx, fill_value=0).astype(int).tolist()
+    return {"months": [str(p) for p in idx], "series": out}
+
+_RX = {"phantom": r"unexpected(ly)?\s+(apply|activate|brak)|prematurely|false|unintended|inadvertent|phantom|without (an )?obstacle",
+       "lane": r"lane|steer", "self-driving": r"autopilot|self-driving|full self|autosteer|summon|driver assist", "": r"."}
+def _unrecalled(mm, since, stream=""):
+    mk, md = mm.split("|"); m = _recalls_for(mk, md)
+    if m.empty: return True
+    key = next((k for k in _RX if k and k in stream.lower()), "")
+    m = m[(m.topic == "adas") & (m.rcdate >= str(int(since[:4]) - 1) + since[5:7] + since[8:10]) & m.defect.str.contains(_RX[key], case=False, regex=True)]
+    return m.empty
+
+@app.get("/alarms_plus", include_in_schema=False)
+def alarms_plus(as_of: Optional[date] = None, source: str = "granite", limit: int = 40, stream: Optional[str] = None):
+    d = alarms(as_of, source, 50)
+    rows = []
+    for a in d["alarms"]:
+        if stream and stream.lower() not in a["stream"].lower(): continue
+        a["unrecalled"] = _unrecalled(a["make"] + "|" + a["model"], a["alarm_since"], a["stream"])
+        rows.append(a)
+    return {**d, "alarms": rows[:limit], "n_unrecalled": sum(r["unrecalled"] for r in rows)}
+
+@app.get("/recall_validation", include_in_schema=False)
+def recall_validation(): return RV.fillna("").to_dict("records")
+
+# ---- Granite memo (watsonx.ai REST); falls back to a template if no credentials ----
+import time as _time, urllib.parse as _up
+_TOK = {"t": None, "exp": 0}
+def _iam():
+    if _TOK["t"] and _time.time() < _TOK["exp"] - 60: return _TOK["t"]
+    data = _up.urlencode({"grant_type": "urn:ibm:params:oauth:grant-type:apikey", "apikey": os.environ["WATSONX_APIKEY"]}).encode()
+    with _ur.urlopen(_ur.Request("https://iam.cloud.ibm.com/identity/token", data=data, headers={"Content-Type": "application/x-www-form-urlencoded"}), timeout=20) as r:
+        j = _json.loads(r.read()); _TOK.update(t=j["access_token"], exp=_time.time() + j.get("expires_in", 3600))
+    return _TOK["t"]
+
+class MemoReq(BaseModel):
+    make: str; model: str
+    stream: str = "FALSE_BRAKING"
+    as_of: Optional[date] = None
+
+def _template_memo(d, rc):
+    ex = "\n".join(f'- #{e["complaint_id"]} ({e["received"]}): "{e["excerpt"][:180]}..."' for e in d["examples"][:3])
+    last = d["weekly"][-1] if d["weekly"] else {}
+    rec = "; ".join(f'{r["campaign"]} ({r["date"]}): {r["component"]}' for r in rc["recalls"][:3]) or "none found"
+    return (f"SUMMARY\\n{d['make']} {d['model']} - {d['stream']}: {d['recent_reports']} reports in the last 26 weeks"
+            f" (latest window {last.get('reports_26wk','?')} vs {last.get('expected','?')} expected, PRR {last.get('prr','?')}).\\n\\n"
+            f"EVIDENCE\\nCrashes: {d['crashes']} | Injuries: {d['injuries']} | Median speed: {d['median_speed_mph']} mph | "
+            f"Mention software update: {int(d['share_mentioning_software_update']*100)}% | Features: {d['top_features_engaged']}\\n\\n"
+            f"EXAMPLE NARRATIVES\\n{ex}\\n\\nEXISTING RECALLS\\n{rec}\\n\\nRECOMMENDED ACTION\\nRequest information from the manufacturer; continue weekly monitoring.\\n\\n"
+            f"CAVEATS\\nStatistical signal from voluntary public reports; not proof of a defect.").replace("\\n", "\n")
+
+@app.post("/memo", include_in_schema=False)
+def memo(req: MemoReq):
+    d = alarm_detail(req.make, req.model, req.stream, req.as_of); rc = recalls(req.make, req.model, 5)
+    if not (os.environ.get("WATSONX_APIKEY") and os.environ.get("WATSONX_PROJECT_ID")):
+        return {"engine": "template", "memo": _template_memo(d, rc)}
+    try:
+        evidence = _json.dumps({"alarm": {k: d[k] for k in d if k != "memo_guidance"}, "existing_recalls": rc}, default=str)[:9000]
+        body = {"model_id": os.environ.get("GRANITE_MODEL", "ibm/granite-4-h-small"), "project_id": os.environ["WATSONX_PROJECT_ID"],
+                "max_tokens": 900, "temperature": 0,
+                "messages": [{"role": "system", "content": "You are a vehicle-safety defect analyst. Write a concise one-page investigation memo in plain text with these headings: SUMMARY, EVIDENCE, EXAMPLE NARRATIVES, EXISTING RECALLS, RECOMMENDED ACTION, CAVEATS. Use ONLY numbers and quotes from the evidence JSON; quote complaints word for word with their IDs; do not invent model years, software versions or dates. Say it is a statistical signal, not proof of a defect."},
+                             {"role": "user", "content": "Evidence JSON:\n" + evidence}]}
+        url = os.environ.get("WATSONX_URL", "https://us-south.ml.cloud.ibm.com") + "/ml/v1/text/chat?version=2024-10-08"
+        r = _ur.Request(url, data=_json.dumps(body).encode(), headers={"Authorization": "Bearer " + _iam(), "Content-Type": "application/json", "Accept": "application/json"})
+        with _ur.urlopen(r, timeout=60) as resp: j = _json.loads(resp.read())
+        return {"engine": body["model_id"], "memo": j["choices"][0]["message"]["content"]}
+    except Exception as e:
+        return {"engine": "template (Granite unavailable: " + str(e)[:80] + ")", "memo": _template_memo(d, rc)}

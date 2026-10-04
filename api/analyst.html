@@ -1,0 +1,68 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoVigil Analyst Console</title><link rel="stylesheet" href="/static/av.css"><script src="/static/chart.umd.js"></script></head><body>
+<nav class="top"><b>AutoVigil</b><a href="/driver">Driver</a><a href="/analyst" class="on">Analyst</a><a href="/research">Research</a></nav>
+<div class="wrap">
+<h1>Analyst console</h1><p class="sub">Driver-assist early-warning alarms from NHTSA complaints. Pick any week to replay what was visible then.</p>
+<div class="kpis" id="kpis"></div>
+<div class="card">
+ <div class="row">
+  <label class="f" style="flex:0 1 180px">As of<input type="date" id="asof"></label>
+  <label class="f" style="flex:0 1 200px">Signal source<select id="src"><option value="granite">IBM Granite failure modes</option><option value="nhtsa_code">NHTSA component codes</option></select></label>
+  <label class="f" style="flex:0 1 220px">Problem<select id="stream"><option value="">All problems</option><option value="phantom">Phantom braking</option><option value="lane">Lane-keeping faults</option><option value="self-driving">Self-driving behaviour</option><option value="unavailable">Assist unavailable</option></select></label>
+  <label style="display:flex;gap:6px;align-items:center;margin-top:18px"><input type="checkbox" id="unrec"> Unrecalled only</label>
+  <button id="latest" style="margin-top:18px">Latest week</button>
+ </div>
+ <div class="tw" style="margin-top:10px"><table><thead><tr><th>Make</th><th>Model</th><th>Problem</th><th class="num">Reports 26 wk</th><th class="num">Expected</th><th class="num">PRR</th><th>Alarm since</th><th>Recall</th></tr></thead><tbody id="tb"></tbody></table></div>
+ <p class="note" id="tbnote"></p>
+</div>
+<div class="card hidden" id="detail">
+ <div class="row"><h2 id="dtitle" style="margin:0;margin-right:auto"></h2><button class="primary" id="memo">Draft memo with IBM Granite</button></div>
+ <div class="kpis" id="dkpis"></div>
+ <div class="grid2">
+  <div><h3>Reports in rolling 26 weeks vs expected</h3><div class="chartbox"><canvas id="dchart"></canvas></div></div>
+  <div><h3>Example narratives</h3><div id="dex"></div></div>
+ </div>
+ <h3>Related recalls</h3><div id="drec"></div>
+ <div id="memoout" class="hidden"><h3>Investigation memo <span class="note" id="engine"></span></h3><pre class="memo" id="memotext"></pre><button id="copymemo">Copy memo</button>
+ <p class="note">The same memo can be requested conversationally from the AutoVigil Defect Analyst agent in IBM watsonx Orchestrate.</p></div>
+</div>
+<div class="card"><h2>Independent check: did alarms come before recalls?</h2>
+ <p class="note">Recalls were never used to build the alarms. Phantom-braking alarm runs that were still active when a matching false-braking recall was issued:</p>
+ <div class="tw"><table><thead><tr><th>Make</th><th>Model</th><th>Recall</th><th>Recall date</th><th>Alarm on since</th><th class="num">Weeks before recall</th></tr></thead><tbody id="rv"></tbody></table></div></div>
+<footer>Signals: PRR ≥ 2, χ² ≥ 4, ≥ 3 reports over a 26-week incident window, using only complaints received by the selected week; ranked by BCPNN IC025. Statistical hypotheses for human review, not proof of a defect.</footer>
+</div>
+<script>
+const $=id=>document.getElementById(id), css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const j=async(u,o)=>(await fetch(u,o)).json(); let CUR=null, ch=null;
+const STREAM={"phantom braking (Granite-coded)":"FALSE_BRAKING","lane-keeping faults (Granite-coded)":"LANE_KEEP","self-driving behaviour (Granite-coded)":"SELF_DRIVING","assist unavailable (Granite-coded)":"SYSTEM_UNAVAILABLE",
+ "forward collision avoidance (NHTSA code)":"FORWARD COLLISION AVOIDANCE","lane departure (NHTSA code)":"LANE DEPARTURE","ADAS (electrical) (NHTSA code)":"ADAS (ELECTRICAL)","ADAS electrical (NHTSA code)":"ADAS (ELECTRICAL)","service brakes (NHTSA code)":"SERVICE BRAKES","back-over prevention (NHTSA code)":"BACK OVER PREVENTION"};
+async function load(){
+ const a=$("asof").value, q=`/alarms_plus?source=${$("src").value}&limit=25`+(a?`&as_of=${a}`:"")+($("stream").value?`&stream=${$("stream").value}`:"");
+ const d=await j(q); let rows=d.alarms; if($("unrec").checked) rows=rows.filter(r=>r.unrecalled);
+ $("kpis").innerHTML=`<div class="kpi"><b>${d.alarms.length}</b><span>active alarms, week of ${d.as_of_week}</span></div><div class="kpi"><b>${d.n_unrecalled}</b><span>with no matching recall yet</span></div><div class="kpi"><b>8 / 8</b><span>past investigations flagged early (median 46 wk)</span></div><div class="kpi"><b>66 wk</b><span>Hyundai Tucson alarm before its 423k-vehicle recall</span></div>`;
+ $("tb").innerHTML=rows.map((r,i)=>`<tr class="click" data-i="${i}"><td>${r.make}</td><td>${r.model}</td><td>${r.stream}</td><td class="num">${r.reports_last_26_weeks}</td><td class="num">${r.expected}</td><td class="num">${r.prr}</td><td>${r.alarm_since}</td><td>${r.unrecalled?'<span class="badge red">none yet</span>':'<span class="badge green">recall issued</span>'}</td></tr>`).join("")||`<tr><td colspan=8>No alarms match.</td></tr>`;
+ $("tbnote").textContent="Click a row for evidence and a memo.";
+ document.querySelectorAll("#tb tr.click").forEach(tr=>tr.onclick=()=>{document.querySelectorAll("#tb tr").forEach(x=>x.classList.remove("sel"));tr.classList.add("sel");detail(rows[+tr.dataset.i])});
+}
+async function detail(r){
+ CUR=r; const s=STREAM[r.stream]||"FALSE_BRAKING", a=$("asof").value;
+ const [d,rc]=await Promise.all([j(`/alarm_detail?make=${encodeURIComponent(r.make)}&model=${encodeURIComponent(r.model)}&stream=${encodeURIComponent(s)}`+(a?`&as_of=${a}`:"")),
+   j(`/recalls?make=${encodeURIComponent(r.make)}&model=${encodeURIComponent(r.model)}&limit=5`)]);
+ $("detail").classList.remove("hidden"); $("memoout").classList.add("hidden");
+ $("dtitle").textContent=`${r.make} ${r.model} · ${r.stream}`;
+ $("dkpis").innerHTML=`<div class="kpi"><b>${d.recent_reports}</b><span>reports, last 26 weeks</span></div><div class="kpi"><b>${d.crashes} / ${d.injuries}</b><span>crashes / injuries</span></div><div class="kpi"><b>${d.median_speed_mph??"–"} mph</b><span>median speed</span></div><div class="kpi"><b>${Math.round(d.share_mentioning_software_update*100)}%</b><span>mention a software update</span></div>`;
+ ch&&ch.destroy();
+ ch=new Chart($("dchart"),{type:"line",data:{labels:d.weekly.map(w=>w.week),datasets:[{label:"Reports",data:d.weekly.map(w=>w.reports_26wk),borderColor:css("--s1"),borderWidth:2,pointRadius:0},{label:"Expected",data:d.weekly.map(w=>w.expected),borderColor:css("--exp"),borderDash:[5,4],borderWidth:2,pointRadius:0}]},
+  options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{mode:"index",intersect:false},plugins:{legend:{labels:{color:css("--text2"),boxWidth:14}}},scales:{x:{ticks:{color:css("--muted"),maxTicksLimit:6},grid:{display:false}},y:{beginAtZero:true,ticks:{color:css("--muted")},grid:{color:css("--border")}}}}});
+ $("dex").innerHTML=d.examples.map(e=>`<div class="quote">“${e.excerpt}…”<br><span class="note">#${e.complaint_id} · ${e.received}</span></div>`).join("")||'<p class="note">No examples.</p>';
+ $("drec").innerHTML=rc.recalls.map(x=>`<div class="quote"><b>${x.campaign}</b> · ${x.date} · ${Number(x.vehicles||0).toLocaleString()} vehicles · ${x.component}<br>${x.defect.slice(0,220)}…</div>`).join("")||'<p><span class="badge red">No related recall</span></p>';
+ $("detail").scrollIntoView({behavior:"smooth"});
+}
+$("memo").onclick=async()=>{ if(!CUR)return; $("memo").textContent="Granite is writing…"; $("memo").disabled=true;
+ const a=$("asof").value; const m=await j("/memo",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({make:CUR.make,model:CUR.model,stream:STREAM[CUR.stream]||"FALSE_BRAKING",as_of:a||null})});
+ $("memotext").textContent=m.memo; $("engine").textContent="· written by "+m.engine; $("memoout").classList.remove("hidden"); $("memo").textContent="Draft memo with IBM Granite"; $("memo").disabled=false;};
+$("copymemo").onclick=()=>{navigator.clipboard.writeText($("memotext").textContent);$("copymemo").textContent="Copied ✓"};
+["asof","src","stream","unrec"].forEach(id=>$(id).onchange=load); $("latest").onclick=()=>{$("asof").value="";load()};
+(async()=>{load(); const rv=await j("/recall_validation");
+ $("rv").innerHTML=rv.filter(r=>r.recall).map(r=>`<tr><td>${r.make}</td><td>${r.model}</td><td>${r.recall}</td><td>${r.recall_date}</td><td>${r.alarm_run_start}</td><td class="num"><b>${Math.round(r.lead_wk)}</b></td></tr>`).join("");})();
+</script></body></html>

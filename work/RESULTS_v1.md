@@ -43,3 +43,10 @@ Every 14 days, TTM forecasts the next 28 days of 7-day-rolling daily counts from
 - Control streams (20 non-investigated phantom-braking models): 17% alarm in a given year.
 => Self-referential forecasting adapts to slowly rising complaint levels and only flags abrupt surges, late. Comparing a model against
    all other models (PRR/BCPNN) is far better for early warning (8/8, median 46 wk). TTM is a complementary acute-surge detector.
+
+## Independent validation against recalls (recalls never used to build alarms)
+- 12 false-braking recall campaigns since 2017; 4 were preceded by an active Granite phantom-braking alarm (misses are mostly
+  low-volume makes with almost no complaints: Nexus/Winnebago RVs, Rolls-Royce; plus Mazda 2019, Genesis 2025).
+- Leads: Hyundai Tucson 66 wk before 26V316000 (May 2026, 423,062 vehicles, "unexpectedly apply the brakes");
+  Tesla Model 3 50 wk before 21V846000; Mazda CX-90 29 wk before 24V349000; Chevrolet Colorado / GMC Canyon 6-7 wk before 24V133000.
+- Hyundai Tucson was NOT in the ground-truth set used to design the method (it was a control stream) -> out-of-sample hit.

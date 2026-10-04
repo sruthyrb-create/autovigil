@@ -10,7 +10,9 @@ Medicines are monitored after launch: regulators mine patient reports for "more 
 AutoVigil has two sides:
 - **Driver Intake agent (watsonx Orchestrate):** a driver says "my car braked hard with nothing in front of me." The agent checks whether an early-warning alarm is active for that model, shows how many similar public reports exist (with a real example), tells the driver what to do now, and asks the follow-up questions engineers need (speed, feature engaged, conditions, software update) to draft a complete NHTSA complaint with a completeness score.
 - **Defect Analyst agent (watsonx Orchestrate):** for regulators, journalists and safety teams. It ranks active alarms, pulls the evidence (trend vs expected, crashes, injuries, example narratives, share mentioning software updates) and drafts a one-page investigation memo - making defect triage less boring.
-- **Dashboard:** replays history week by week to show when AutoVigil's alarm turned on versus when NHTSA opened each investigation, plus a live alarm board.
+- **Driver app:** pick your car -> alarm status, how many owners report the same thing, monthly trend, whether a recall already covers the problem, what to do today, and a guided report with a live completeness meter (or talk to the ElevenLabs voice agent).
+- **Analyst console:** time-machine alarm board, 'unrecalled' flags, evidence panel and a one-click investigation memo written by IBM Granite.
+- **Research page:** replays history week by week to show when AutoVigil's alarm turned on versus when NHTSA opened each investigation, plus a live alarm board.
 
 ## How we built it
 - **Data:** NHTSA ODI flat files - 1.2M complaint rows (859,888 vehicle complaints since 2014), 5,349 investigations, recalls. 13 ADAS investigations curated as ground truth.
@@ -26,6 +28,7 @@ AutoVigil has two sides:
 - **RQ1 - lead time:** the component-code detector flagged **8 of 8** complaint-driven ADAS investigations before NHTSA opened them, **median 46 weeks early** (range 7-113). Cost: ~54 alarmed model streams per year, 4.5% of which were later investigated.
 - **RQ2 - does LLM coding help?** Granite failure-mode streams caught 6 of 8 (median 39 weeks) with **half the alarms (27/yr) and double the precision (9.4%)**. The two misses are explainable (VW Atlas complaints were mostly parking-brake electrical faults, not ADAS; Honda Insight/Passport had too few reports). The detectors are complementary.
 - **RQ5 - IBM time-series foundation model:** we also ran IBM Granite TinyTimeMixer (granite-ttm-512-96-r2 on watsonx.ai) as a forecaster - alarm when a car's complaints exceed 2x its own forecast. It caught only 4 of 8, 2-4 weeks early: forecasting a car against its own history adapts to slowly rising complaints, while comparing it against all other cars (disproportionality) sees them early. A useful negative result - TTM is an acute-surge detector, not an early-warning one.
+- **Independent check against recalls (out of sample):** recalls were never used to build the alarms. AutoVigil's phantom-braking alarm for the **Hyundai Tucson** was on **66 weeks before** Hyundai's May 2026 recall of **423,062** vehicles for cameras that "unexpectedly apply the brakes" - and the Tucson was not in our design set. Tesla Model 3 (50 weeks before recall 21V-846) and Mazda CX-90 (29 weeks before 24V-349) too. Overall 4 of 12 false-braking recall campaigns since 2017 were preceded by an alarm; most misses are low-volume makes with almost no complaints.
 - **Live today:** the alarm board currently flags e.g. Chevrolet Equinox EV and Hyundai Tucson phantom braking - statistical signals worth a closer look, not proof of a defect.
 
 ## Challenges we ran into
@@ -49,6 +52,6 @@ Voluntary, biased reports; no exposure data; 8 ground-truth events is a small sa
 python, pandas, numpy, scipy, fastapi, ibm-watsonx-ai, ibm-granite, granite-ttm, watsonx-orchestrate, elevenlabs, ibm-code-engine, docker, github-actions, chart.js, nhtsa-open-data
 
 ## Links
-- Dashboard: https://autovigil-api.2f6fdusn6le3.us-south.codeengine.appdomain.cloud/
+- App: https://autovigil-api.2f6fdusn6le3.us-south.codeengine.appdomain.cloud/ (Driver: /driver, Analyst: /analyst, Research: /research)
 - API docs: https://autovigil-api.2f6fdusn6le3.us-south.codeengine.appdomain.cloud/docs
 - GitHub: https://github.com/sruthyrb-create/autovigil
